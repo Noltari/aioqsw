@@ -379,7 +379,7 @@ class SystemSensor:
         if temp is not None:
             data[QSD_TEMP] = temp
 
-        temp_max = self.get_temp()
+        temp_max = self.get_temp_max()
         if temp_max is not None:
             data[QSD_TEMP_MAX] = temp_max
 
