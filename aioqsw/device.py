@@ -41,6 +41,7 @@ from aioqsw.const import (
     QSD_DATE,
     QSD_FAN1_SPEED,
     QSD_FAN2_SPEED,
+    QSD_FIRMWARE,
     QSD_MAC,
     QSD_MESSAGE,
     QSD_MODEL,
@@ -183,6 +184,10 @@ class FirmwareInfo:
         if date is not None:
             data[QSD_DATE] = date
 
+        firmware = self.get_firmware()
+        if firmware is not None:
+            data[QSD_FIRMWARE] = firmware
+
         number = self.get_number()
         if number is not None:
             data[QSD_NUMBER] = number
@@ -226,6 +231,16 @@ class FirmwareInfo:
     def get_date(self) -> str | None:
         """Get date."""
         return self.date
+
+    def get_firmware(self) -> str | None:
+        """Get firmware."""
+        if (
+            self.date is not None
+            and self.number is not None
+            and self.version is not None
+        ):
+            return f"{self.version}.{self.number} ({self.date})"
+        return None
 
     def get_number(self) -> str | None:
         """Get number."""
