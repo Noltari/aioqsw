@@ -166,28 +166,31 @@ class QnapQswApi:
         res = await self.get_system_board()
         return SystemBoard(res)
 
-    async def update(self) -> bool:
+    async def update(self) -> None:
         """Update QNAP QSW."""
         await self.login()
 
-        res = await self.get_firmware_condition()
-        self.firmware_condition = FirmwareCondition(res)
+        # Call system/sensor first since it takes a lot of time (~5s)
+        system_sensor = self.get_system_sensor()
 
+        firmware_condition = await self.get_firmware_condition()
+        self.firmware_condition = FirmwareCondition(firmware_condition)
+
+        # Update firmware/info once
         if self.firmware_info is None:
-            res = await self.get_firmware_info()
-            self.firmware_info = FirmwareInfo(res)
+            firmware_info = await self.get_firmware_info()
+            self.firmware_info = FirmwareInfo(firmware_info)
 
+        # Update system/board once
         if self.system_board is None:
-            res = await self.get_system_board()
-            self.system_board = SystemBoard(res)
+            system_board = await self.get_system_board()
+            self.system_board = SystemBoard(system_board)
 
-        res = await self.get_system_sensor()
-        self.system_sensor = SystemSensor(res)
+        system_time = await self.get_system_time()
+        self.system_time = SystemTime(system_time)
 
-        res = await self.get_system_time()
-        self.system_time = SystemTime(res)
-
-        return False
+        # Await system/sensor
+        self.system_sensor = SystemSensor(await system_sensor)
 
     def _login_clear(self) -> None:
         """Clear login data."""
