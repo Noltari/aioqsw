@@ -14,5 +14,9 @@ class InvalidHost(QswError):
     """Exception raised when invalid host is requested."""
 
 
+class InvalidResponse(QswError):
+    """Exception raised when invalid response is received."""
+
+
 class LoginError(QswError):
-    """Exception raised when invalid host is requested."""
+    """Exception raised when login fails."""

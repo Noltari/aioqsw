@@ -7,7 +7,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, cast
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ContentTypeError
 from aiohttp.client_reqrep import ClientResponse
 
 from aioqsw.device import (
@@ -21,6 +21,7 @@ from aioqsw.device import (
 from .const import (
     API_AUTHORIZATION,
     API_ERROR_CODE,
+    API_ERROR_MESSAGE,
     API_PASSWORD,
     API_PATH,
     API_PATH_V1,
@@ -35,7 +36,7 @@ from .const import (
     QSD_SYSTEM_SENSOR,
     QSD_SYSTEM_TIME,
 )
-from .exceptions import APIError, InvalidHost, LoginError
+from .exceptions import APIError, InvalidHost, InvalidResponse, LoginError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ class QnapQswApi:
     ) -> dict[str, Any]:
         """Device HTTP request."""
         _LOGGER.debug("aiohttp request: /%s (params=%s)", path, data)
+
         resp: ClientResponse = await self.aiohttp_session.request(
             method,
             f"{self.options.url}/{path}",
@@ -84,12 +86,29 @@ class QnapQswApi:
             headers=self.headers,
             timeout=HTTP_CALL_TIMEOUT,
         )
-        resp_json = await resp.json(content_type=None)
-        _LOGGER.debug("aiohttp response: %s", resp_json)
+
+        try:
+            resp_json = await resp.json()
+        except ContentTypeError as err:
+            raise InvalidResponse from err
+        else:
+            _LOGGER.debug("aiohttp response: %s", resp_json)
+
+        if resp.status != 200 and len(resp_json) > 0:
+            _LOGGER.error("aiohttp %s /%s: %s", method, path, resp_json)
+
+        if resp.status == 401:
+            raise LoginError
         if resp.status != 200:
             raise APIError
-        if API_ERROR_CODE not in resp_json or resp_json[API_ERROR_CODE] != 200:
+
+        if (
+            API_ERROR_CODE not in resp_json
+            or API_ERROR_MESSAGE not in resp_json
+            or resp_json[API_ERROR_CODE] != 200
+        ):
             raise APIError
+
         return cast(dict, resp_json)
 
     async def get_about(self) -> dict[str, Any]:
