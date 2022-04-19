@@ -239,7 +239,6 @@ class QnapQswApi:
     async def login(self) -> None:
         """User login."""
         if self._login_required():
-            _LOGGER.warning("_login_required")
             await self._login()
         else:
             try:
