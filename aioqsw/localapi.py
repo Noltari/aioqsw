@@ -1,6 +1,7 @@
 """QNAP QSW API."""
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import logging
@@ -36,7 +37,7 @@ from .const import (
     QSD_SYSTEM_SENSOR,
     QSD_SYSTEM_TIME,
 )
-from .exceptions import APIError, InvalidHost, InvalidResponse, LoginError
+from .exceptions import APIError, InvalidHost, InvalidResponse, LoginError, QswError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -171,26 +172,29 @@ class QnapQswApi:
         await self.login()
 
         # Call system/sensor first since it takes a lot of time (~5s)
-        system_sensor = self.get_system_sensor()
+        system_sensor = asyncio.create_task(self.get_system_sensor())
 
-        firmware_condition = await self.get_firmware_condition()
-        self.firmware_condition = FirmwareCondition(firmware_condition)
+        try:
+            firmware_condition = await self.get_firmware_condition()
+            self.firmware_condition = FirmwareCondition(firmware_condition)
 
-        # Update firmware/info once
-        if self.firmware_info is None:
-            firmware_info = await self.get_firmware_info()
-            self.firmware_info = FirmwareInfo(firmware_info)
+            # Update firmware/info once
+            if self.firmware_info is None:
+                firmware_info = await self.get_firmware_info()
+                self.firmware_info = FirmwareInfo(firmware_info)
 
-        # Update system/board once
-        if self.system_board is None:
-            system_board = await self.get_system_board()
-            self.system_board = SystemBoard(system_board)
+            # Update system/board once
+            if self.system_board is None:
+                system_board = await self.get_system_board()
+                self.system_board = SystemBoard(system_board)
 
-        system_time = await self.get_system_time()
-        self.system_time = SystemTime(system_time)
-
-        # Await system/sensor
-        self.system_sensor = SystemSensor(await system_sensor)
+            system_time = await self.get_system_time()
+            self.system_time = SystemTime(system_time)
+        except QswError as err:
+            system_sensor.cancel()
+            raise err
+        else:
+            self.system_sensor = SystemSensor(await system_sensor)
 
     def _login_clear(self) -> None:
         """Clear login data."""
@@ -235,12 +239,13 @@ class QnapQswApi:
     async def login(self) -> None:
         """User login."""
         if self._login_required():
+            _LOGGER.warning("_login_required")
             await self._login()
         else:
             try:
                 await self.get_users_verification()
             except LoginError:
-                self._login()
+                await self._login()
 
     async def logout(self) -> None:
         """User logout."""
