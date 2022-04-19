@@ -239,7 +239,7 @@ class QnapQswApi:
         else:
             try:
                 await self.get_users_verification()
-            except APIError:
+            except LoginError:
                 self._login()
 
     async def logout(self) -> None:
