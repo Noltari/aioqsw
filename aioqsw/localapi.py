@@ -95,7 +95,7 @@ class QnapQswApi:
             _LOGGER.debug("aiohttp response: %s", resp_json)
 
         if resp.status != 200 and len(resp_json) > 0:
-            _LOGGER.error("aiohttp %s /%s: %s", method, path, resp_json)
+            _LOGGER.error("aiohttp %s /%s: %s %s", method, path, resp.status, resp_json)
 
         if resp.status == 401:
             raise LoginError
