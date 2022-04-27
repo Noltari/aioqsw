@@ -21,6 +21,7 @@ from aioqsw.device import (
 
 from .const import (
     API_AUTHORIZATION,
+    API_COMMAND,
     API_ERROR_CODE,
     API_ERROR_MESSAGE,
     API_PASSWORD,
@@ -28,6 +29,7 @@ from .const import (
     API_PATH_V1,
     API_QSW_ID,
     API_QSW_LANG,
+    API_REBOOT,
     API_RESULT,
     API_USERNAME,
     HTTP_CALL_TIMEOUT,
@@ -144,6 +146,13 @@ class QnapQswApi:
         """API GET system time."""
         return await self.http_request("GET", f"{API_PATH_V1}/system/time")
 
+    async def post_system_command(self, command: str) -> dict[str, Any]:
+        """API POST system command."""
+        params = {
+            API_COMMAND: command,
+        }
+        return await self.http_request("POST", f"{API_PATH_V1}/command", params)
+
     async def post_users_exit(self) -> dict[str, Any]:
         """API POST users exit."""
         return await self.http_request("POST", f"{API_PATH_V1}/users/exit", {})
@@ -151,6 +160,19 @@ class QnapQswApi:
     async def post_users_login(self, params) -> dict[str, Any]:
         """API POST users login."""
         return await self.http_request("POST", f"{API_PATH_V1}/users/login", params)
+
+    async def reboot(self) -> bool:
+        """Reboot QNAP QSW."""
+        await self.login()
+
+        response = await self.post_system_command(API_REBOOT)
+
+        result = response.get(API_RESULT)
+        if not result:
+            _LOGGER.error("Error when rebooting: %s", response)
+            raise APIError
+
+        return True
 
     async def validate(self) -> SystemBoard:
         """Validate QNAP QSW."""
