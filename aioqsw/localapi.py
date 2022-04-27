@@ -12,6 +12,7 @@ from aiohttp import ClientSession, ContentTypeError
 from aiohttp.client_reqrep import ClientResponse
 
 from aioqsw.device import (
+    FirmwareCheck,
     FirmwareCondition,
     FirmwareInfo,
     SystemBoard,
@@ -33,6 +34,7 @@ from .const import (
     API_RESULT,
     API_USERNAME,
     HTTP_CALL_TIMEOUT,
+    QSD_FIRMWARE_CHECK,
     QSD_FIRMWARE_CONDITION,
     QSD_FIRMWARE_INFO,
     QSD_SYSTEM_BOARD,
@@ -67,6 +69,7 @@ class QnapQswApi:
         self.cookies: dict[str, str] = {
             API_QSW_LANG: "ENG",
         }
+        self.firmware_check: FirmwareCheck | None = None
         self.firmware_condition: FirmwareCondition | None = None
         self.firmware_info: FirmwareInfo | None = None
         self.headers: dict[str, str] = {}
@@ -126,6 +129,18 @@ class QnapQswApi:
         """API GET firmware info."""
         return await self.http_request("GET", f"{API_PATH_V1}/firmware/info")
 
+    async def get_firmware_status(self):
+        """API GET firmware status."""
+        return await self.http_request("GET", f"{API_PATH_V1}/firmware/status")
+
+    async def get_firmware_update(self):
+        """API GET firmware update."""
+        return await self.http_request("GET", f"{API_PATH_V1}/firmware/update")
+
+    async def get_firmware_update_check(self):
+        """API GET firmware update check."""
+        return await self.http_request("GET", f"{API_PATH_V1}/firmware/update/check")
+
     async def get_live(self) -> dict[str, Any]:
         """API GET live."""
         return await self.http_request("GET", f"{API_PATH}/live")
@@ -160,6 +175,15 @@ class QnapQswApi:
     async def post_users_login(self, params) -> dict[str, Any]:
         """API POST users login."""
         return await self.http_request("POST", f"{API_PATH_V1}/users/login", params)
+
+    async def check_firmware(self) -> FirmwareCheck:
+        """Check QNAP QSW firmware version."""
+        await self.login()
+
+        fw_check = await self.get_firmware_update_check()
+        self.firmware_check = FirmwareCheck(fw_check)
+
+        return self.firmware_check
 
     async def reboot(self) -> bool:
         """Reboot QNAP QSW."""
@@ -281,6 +305,11 @@ class QnapQswApi:
     def data(self) -> dict[str, Any]:
         """Return QNAP QSW device data."""
         data: dict[str, Any] = {}
+
+        if self.firmware_check is not None:
+            firmware_check_data = self.firmware_check.data()
+            if len(firmware_check_data) > 0:
+                data[QSD_FIRMWARE_CHECK] = firmware_check_data
 
         if self.firmware_condition is not None:
             firmware_condition_data = self.firmware_condition.data()

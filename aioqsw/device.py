@@ -14,12 +14,15 @@ from aioqsw.const import (
     API_COMMIT_CPSS,
     API_COMMIT_ISS,
     API_DATE,
+    API_DESCRIPTION,
+    API_DOWNLOAD_URL,
     API_FAN1_SPEED,
     API_FAN2_SPEED,
     API_MAC_ADDR,
     API_MAX_SWITCH_TEMP,
     API_MESSAGE,
     API_MODEL,
+    API_NEWER,
     API_NUMBER,
     API_PORT_NUM,
     API_PRODUCT,
@@ -39,12 +42,15 @@ from aioqsw.const import (
     QSD_COMMIT_CPSS,
     QSD_COMMIT_ISS,
     QSD_DATE,
+    QSD_DESCRIPTION,
+    QSD_DOWNLOAD_URLS,
     QSD_FAN1_SPEED,
     QSD_FAN2_SPEED,
     QSD_FIRMWARE,
     QSD_MAC,
     QSD_MESSAGE,
     QSD_MODEL,
+    QSD_NEWER,
     QSD_NUMBER,
     QSD_PORT_NUM,
     QSD_PRODUCT,
@@ -57,6 +63,112 @@ from aioqsw.const import (
     QSD_VERSION,
 )
 from aioqsw.exceptions import APIError
+
+
+class FirmwareCheck:
+    """Firmware Check."""
+
+    def __init__(self, firmware_check: dict[str, Any]):
+        """Firmware Check init."""
+        self.build_number: str | None = None
+        self.date: str | None = None
+        self.description: str | None = None
+        self.download_urls: list[str] = []
+        self.newer: bool | None = None
+        self.number: str | None = None
+        self.version: str | None = None
+
+        res = firmware_check.get(API_RESULT)
+        if not res:
+            raise APIError
+
+        if API_BUILD_NUMBER in res:
+            self.build_number = str(res[API_BUILD_NUMBER])
+
+        if API_DATE in res:
+            self.date = str(res[API_DATE])
+
+        if API_DESCRIPTION in res:
+            self.description = str(res[API_DESCRIPTION])
+
+        if API_DOWNLOAD_URL in res:
+            for url in res[API_DOWNLOAD_URL]:
+                self.download_urls.append(str(url))
+
+        if API_NEWER in res:
+            self.newer = bool(res[API_NEWER])
+
+        if API_NUMBER in res:
+            self.number = str(res[API_NUMBER])
+
+        if API_VERSION in res:
+            self.version = str(res[API_VERSION])
+
+    def data(self) -> dict[str, Any]:
+        """Return Firmware Info data."""
+        data: dict[str, Any] = {}
+
+        build_number = self.get_build_number()
+        if build_number is not None:
+            data[QSD_BUILD_NUMBER] = build_number
+
+        date = self.get_date()
+        if date is not None:
+            data[QSD_DATE] = date
+
+        description = self.get_description()
+        if description is not None:
+            data[QSD_DESCRIPTION] = description
+
+        download_urls = self.get_download_urls()
+        if download_urls is not None:
+            data[QSD_DOWNLOAD_URLS] = download_urls
+
+        newer = self.get_newer()
+        if newer is not None:
+            data[QSD_NEWER] = newer
+
+        number = self.get_number()
+        if number is not None:
+            data[QSD_NUMBER] = number
+
+        version = self.get_version()
+        if version is not None:
+            data[QSD_VERSION] = version
+
+        return data
+
+    def get_build_number(self) -> str | None:
+        """Get build number."""
+        return self.build_number
+
+    def get_date(self) -> str | None:
+        """Get date."""
+        return self.date
+
+    def get_description(self) -> str | None:
+        """Get description."""
+        if self.description is not None and len(self.description) > 0:
+            return self.description
+        return None
+
+    def get_download_urls(self) -> list[str] | None:
+        """Get download URLs."""
+        if len(self.download_urls) > 0:
+            return self.download_urls
+        return None
+
+    def get_newer(self) -> bool | None:
+        """Get newer."""
+        return self.newer
+
+    def get_number(self) -> str | None:
+        """Get number."""
+        return self.number
+
+    def get_version(self) -> str | None:
+        """Get version."""
+        return self.version
 
 
 class FirmwareCondition:
