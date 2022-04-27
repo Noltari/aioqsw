@@ -172,7 +172,7 @@ class QnapQswApi:
         """API POST users exit."""
         return await self.http_request("POST", f"{API_PATH_V1}/users/exit", {})
 
-    async def post_users_login(self, params) -> dict[str, Any]:
+    async def post_users_login(self, params: dict[str, Any]) -> dict[str, Any]:
         """API POST users login."""
         return await self.http_request("POST", f"{API_PATH_V1}/users/login", params)
 
