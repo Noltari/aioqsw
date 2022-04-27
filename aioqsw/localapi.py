@@ -166,7 +166,7 @@ class QnapQswApi:
         params = {
             API_COMMAND: command,
         }
-        return await self.http_request("POST", f"{API_PATH_V1}/command", params)
+        return await self.http_request("POST", f"{API_PATH_V1}/system/command", params)
 
     async def post_users_exit(self) -> dict[str, Any]:
         """API POST users exit."""
