@@ -124,6 +124,10 @@ class FirmwareCheck:
         if download_urls is not None:
             data[QSD_DOWNLOAD_URLS] = download_urls
 
+        firmware = self.get_firmware()
+        if firmware is not None:
+            data[QSD_FIRMWARE] = firmware
+
         newer = self.get_newer()
         if newer is not None:
             data[QSD_NEWER] = newer
@@ -156,6 +160,16 @@ class FirmwareCheck:
         """Get download URLs."""
         if len(self.download_urls) > 0:
             return self.download_urls
+        return None
+
+    def get_firmware(self) -> str | None:
+        """Get firmware."""
+        if self.version is not None:
+            if self.number is not None:
+                if self.build_number is not None:
+                    return f"{self.version}.{self.number} ({self.build_number})"
+                return f"{self.version}.{self.number}"
+            return self.version
         return None
 
     def get_newer(self) -> bool | None:
@@ -346,12 +360,12 @@ class FirmwareInfo:
 
     def get_firmware(self) -> str | None:
         """Get firmware."""
-        if (
-            self.date is not None
-            and self.number is not None
-            and self.version is not None
-        ):
-            return f"{self.version}.{self.number} ({self.date})"
+        if self.version is not None:
+            if self.number is not None:
+                if self.build_number is not None:
+                    return f"{self.version}.{self.number} ({self.build_number})"
+                return f"{self.version}.{self.number}"
+            return self.version
         return None
 
     def get_number(self) -> str | None:
