@@ -1,3 +1,4 @@
+*.conf
 *.egg-info
 *.patch
 __pycache__

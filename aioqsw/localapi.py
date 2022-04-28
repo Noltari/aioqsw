@@ -78,6 +78,33 @@ class QnapQswApi:
         self.system_sensor: SystemSensor | None = None
         self.system_time: SystemTime | None = None
 
+    async def http_request_bytes(
+        self, method: str, path: str, data: Any | None = None
+    ) -> bytes:
+        """Device HTTP request."""
+        _LOGGER.debug("aiohttp request: /%s (params=%s)", path, data)
+
+        resp: ClientResponse = await self.aiohttp_session.request(
+            method,
+            f"{self.options.url}/{path}",
+            cookies=self.cookies,
+            data=json.dumps(data),
+            headers=self.headers,
+            timeout=HTTP_CALL_TIMEOUT,
+        )
+
+        resp_bytes = await resp.read()
+
+        if resp.status != 200:
+            _LOGGER.error("http_request_bytes %s /%s: %s", method, path, resp.status)
+
+        if resp.status == 401:
+            raise LoginError
+        if resp.status != 200:
+            raise APIError
+
+        return resp_bytes
+
     async def http_request(
         self, method: str, path: str, data: Any | None = None
     ) -> dict[str, Any]:
@@ -153,6 +180,10 @@ class QnapQswApi:
         """API GET system board."""
         return await self.http_request("GET", f"{API_PATH_V1}/system/board")
 
+    async def get_system_config(self) -> bytes:
+        """API GET system config."""
+        return await self.http_request_bytes("GET", f"{API_PATH_V1}/system/config")
+
     async def get_system_sensor(self) -> dict[str, Any]:
         """API GET system sensor."""
         return await self.http_request("GET", f"{API_PATH_V1}/system/sensor")
@@ -184,6 +215,12 @@ class QnapQswApi:
         self.firmware_check = FirmwareCheck(fw_check)
 
         return self.firmware_check
+
+    async def config_backup(self) -> bytes:
+        """Create a QNAP QSW config backup."""
+        await self.login()
+
+        return await self.get_system_config()
 
     async def reboot(self) -> bool:
         """Reboot QNAP QSW."""
