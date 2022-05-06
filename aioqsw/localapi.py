@@ -238,11 +238,6 @@ class QnapQswApi:
     async def validate(self) -> SystemBoard:
         """Validate QNAP QSW."""
         try:
-            await self.get_live()
-        except APIError as err:
-            raise InvalidHost from err
-
-        try:
             await self._login()
         except APIError as err:
             raise LoginError from err
