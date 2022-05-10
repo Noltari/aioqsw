@@ -142,7 +142,7 @@ class QnapQswApi:
         ):
             raise APIError
 
-        return cast(dict, resp_json)
+        return cast(dict[str, Any], resp_json)
 
     async def get_about(self) -> dict[str, Any]:
         """API GET about."""
@@ -156,15 +156,15 @@ class QnapQswApi:
         """API GET firmware info."""
         return await self.http_request("GET", f"{API_PATH_V1}/firmware/info")
 
-    async def get_firmware_status(self):
+    async def get_firmware_status(self) -> dict[str, Any]:
         """API GET firmware status."""
         return await self.http_request("GET", f"{API_PATH_V1}/firmware/status")
 
-    async def get_firmware_update(self):
+    async def get_firmware_update(self) -> dict[str, Any]:
         """API GET firmware update."""
         return await self.http_request("GET", f"{API_PATH_V1}/firmware/update")
 
-    async def get_firmware_update_check(self):
+    async def get_firmware_update_check(self) -> dict[str, Any]:
         """API GET firmware update check."""
         return await self.http_request("GET", f"{API_PATH_V1}/firmware/update/check")
 
