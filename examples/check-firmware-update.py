@@ -23,7 +23,11 @@ async def main():
             print(json.dumps(qsw.data(), indent=4, sort_keys=True))
 
             print("Checking QNAP QSW firmware update...")
-            firmware_check = await qsw.check_firmware()
+            try:
+                firmware_check = await qsw.check_firmware()
+            except APIError as err:
+                print(err)
+                firmware_check = None
             if firmware_check:
                 print(json.dumps(firmware_check.data(), indent=4, sort_keys=True))
         except APIError:

@@ -41,6 +41,8 @@ API_UPTIME = "UpTime"
 API_USERNAME = "username"
 API_VERSION = "version"
 
+API_ERROR_PARSING_FAILED = 6
+
 QSD_ANOMALY = "anomaly"
 QSD_BUILD_NUMBER = "build-number"
 QSD_CHIP_ID = "chip-id"

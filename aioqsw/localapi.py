@@ -23,8 +23,6 @@ from aioqsw.device import (
 from .const import (
     API_AUTHORIZATION,
     API_COMMAND,
-    API_ERROR_CODE,
-    API_ERROR_MESSAGE,
     API_PASSWORD,
     API_PATH,
     API_PATH_V1,
@@ -95,13 +93,10 @@ class QnapQswApi:
 
         resp_bytes = await resp.read()
 
-        if resp.status != 200:
-            _LOGGER.error("http_request_bytes %s /%s: %s", method, path, resp.status)
-
         if resp.status == 401:
-            raise LoginError
+            raise LoginError(f"Login error @ {method} /{path}")
         if resp.status != 200:
-            raise APIError
+            raise APIError(f"API error @ {method} /{path} HTTP={resp.status}")
 
         return resp_bytes
 
@@ -120,6 +115,7 @@ class QnapQswApi:
             timeout=HTTP_CALL_TIMEOUT,
         )
 
+        resp_json = None
         try:
             resp_json = await resp.json()
         except ContentTypeError as err:
@@ -127,20 +123,12 @@ class QnapQswApi:
         else:
             _LOGGER.debug("aiohttp response: %s", resp_json)
 
-        if resp.status != 200 and len(resp_json) > 0:
-            _LOGGER.error("aiohttp %s /%s: %s %s", method, path, resp.status, resp_json)
-
         if resp.status == 401:
-            raise LoginError
+            raise LoginError("Login error @ {method} /{path}")
         if resp.status != 200:
-            raise APIError
-
-        if (
-            API_ERROR_CODE not in resp_json
-            or API_ERROR_MESSAGE not in resp_json
-            or resp_json[API_ERROR_CODE] != 200
-        ):
-            raise APIError
+            raise APIError(
+                f"API error @ {method} /{path} HTTP={resp.status} Resp={resp_json}"
+            )
 
         return cast(dict[str, Any], resp_json)
 
@@ -230,8 +218,7 @@ class QnapQswApi:
 
         result = response.get(API_RESULT)
         if not result:
-            _LOGGER.error("Error when rebooting: %s", response)
-            raise APIError
+            raise APIError(f"Error when rebooting: {response}")
 
         return True
 
@@ -313,7 +300,7 @@ class QnapQswApi:
             raise LoginError from err
 
         if API_RESULT not in login:
-            raise LoginError
+            raise LoginError("Invalid login response")
 
         self.api_key = str(login[API_RESULT])
         self.cookies[API_QSW_ID] = self.api_key
