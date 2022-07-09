@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from aiohttp import ClientSession, ContentTypeError
+from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp.client_reqrep import ClientResponse
 
 from aioqsw.device import (
@@ -82,14 +83,17 @@ class QnapQswApi:
         """Device HTTP request."""
         _LOGGER.debug("aiohttp request: /%s (params=%s)", path, data)
 
-        resp: ClientResponse = await self.aiohttp_session.request(
-            method,
-            f"{self.options.url}/{path}",
-            cookies=self.cookies,
-            data=json.dumps(data),
-            headers=self.headers,
-            timeout=HTTP_CALL_TIMEOUT,
-        )
+        try:
+            resp: ClientResponse = await self.aiohttp_session.request(
+                method,
+                f"{self.options.url}/{path}",
+                cookies=self.cookies,
+                data=json.dumps(data),
+                headers=self.headers,
+                timeout=HTTP_CALL_TIMEOUT,
+            )
+        except ClientConnectorError as err:
+            raise InvalidHost from err
 
         resp_bytes = await resp.read()
 
@@ -106,14 +110,17 @@ class QnapQswApi:
         """Device HTTP request."""
         _LOGGER.debug("aiohttp request: /%s (params=%s)", path, data)
 
-        resp: ClientResponse = await self.aiohttp_session.request(
-            method,
-            f"{self.options.url}/{path}",
-            cookies=self.cookies,
-            data=json.dumps(data),
-            headers=self.headers,
-            timeout=HTTP_CALL_TIMEOUT,
-        )
+        try:
+            resp: ClientResponse = await self.aiohttp_session.request(
+                method,
+                f"{self.options.url}/{path}",
+                cookies=self.cookies,
+                data=json.dumps(data),
+                headers=self.headers,
+                timeout=HTTP_CALL_TIMEOUT,
+            )
+        except ClientConnectorError as err:
+            raise InvalidHost from err
 
         resp_json = None
         try:
