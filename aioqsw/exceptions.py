@@ -10,6 +10,10 @@ class APIError(QswError):
     """Exception raised when API fails."""
 
 
+class InternalServerError(APIError):
+    """Exception raised when API returns internal server error."""
+
+
 class InvalidHost(QswError):
     """Exception raised when invalid host is requested."""
 

@@ -40,7 +40,14 @@ from .const import (
     QSD_SYSTEM_SENSOR,
     QSD_SYSTEM_TIME,
 )
-from .exceptions import APIError, InvalidHost, InvalidResponse, LoginError, QswError
+from .exceptions import (
+    APIError,
+    InternalServerError,
+    InvalidHost,
+    InvalidResponse,
+    LoginError,
+    QswError,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,6 +70,7 @@ class QnapQswApi:
         options: ConnectionOptions,
     ):
         """Device init."""
+        self._first_update: bool = True
         self.aiohttp_session = aiohttp_session
         self.api_key: str | None = None
         self.cookies: dict[str, str] = {
@@ -133,6 +141,10 @@ class QnapQswApi:
         if resp.status == 401:
             raise LoginError("Login error @ {method} /{path}")
         if resp.status != 200:
+            if resp.status == 500:
+                raise InternalServerError(
+                    f"Internal server error @ {method} /{path} HTTP={resp.status} Resp={resp_json}"
+                )
             raise APIError(
                 f"API error @ {method} /{path} HTTP={resp.status} Resp={resp_json}"
             )
@@ -231,6 +243,8 @@ class QnapQswApi:
 
     async def validate(self) -> SystemBoard:
         """Validate QNAP QSW."""
+        self._first_update = True
+
         try:
             await self.get_live()
         except APIError as err:
@@ -271,7 +285,14 @@ class QnapQswApi:
             system_sensor.cancel()
             raise err
         else:
-            self.system_sensor = SystemSensor(await system_sensor)
+            try:
+                self.system_sensor = SystemSensor(await system_sensor)
+            except InternalServerError as err:
+                if self._first_update:
+                    raise err
+                _LOGGER.warning(err)
+
+        self._first_update = False
 
     def _login_clear(self) -> None:
         """Clear login data."""
