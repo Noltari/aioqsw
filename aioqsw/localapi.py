@@ -16,6 +16,7 @@ from aioqsw.device import (
     FirmwareCheck,
     FirmwareCondition,
     FirmwareInfo,
+    PortsStatus,
     SystemBoard,
     SystemSensor,
     SystemTime,
@@ -36,6 +37,7 @@ from .const import (
     QSD_FIRMWARE_CHECK,
     QSD_FIRMWARE_CONDITION,
     QSD_FIRMWARE_INFO,
+    QSD_PORTS_STATUS,
     QSD_SYSTEM_BOARD,
     QSD_SYSTEM_SENSOR,
     QSD_SYSTEM_TIME,
@@ -81,6 +83,7 @@ class QnapQswApi:
         self.firmware_info: FirmwareInfo | None = None
         self.headers: dict[str, str] = {}
         self.options = options
+        self.ports_status: PortsStatus | None = None
         self.system_board: SystemBoard | None = None
         self.system_sensor: SystemSensor | None = None
         self.system_time: SystemTime | None = None
@@ -178,6 +181,10 @@ class QnapQswApi:
     async def get_live(self) -> dict[str, Any]:
         """API GET live."""
         return await self.http_request("GET", f"{API_PATH}/live")
+
+    async def get_ports_status(self) -> dict[str, Any]:
+        """API GET ports status."""
+        return await self.http_request("GET", f"{API_PATH_V1}/ports/status")
 
     async def get_users_verification(self) -> dict[str, Any]:
         """API GET users verification."""
@@ -279,6 +286,18 @@ class QnapQswApi:
                 system_board = await self.get_system_board()
                 self.system_board = SystemBoard(system_board)
 
+            # Get max ports from system/board
+            max_ports = 0
+            if self.system_board is not None:
+                port_num = self.system_board.get_port_num()
+                if port_num is not None:
+                    max_ports = port_num
+
+            ports_status_data = await self.get_ports_status()
+            ports_status = PortsStatus(ports_status_data)
+            ports_status.calc(max_ports)
+            self.ports_status = ports_status
+
             system_time = await self.get_system_time()
             self.system_time = SystemTime(system_time)
         except QswError as err:
@@ -372,6 +391,11 @@ class QnapQswApi:
             firmware_info_data = self.firmware_info.data()
             if len(firmware_info_data) > 0:
                 data[QSD_FIRMWARE_INFO] = firmware_info_data
+
+        if self.ports_status is not None:
+            ports_status_data = self.ports_status.data()
+            if len(ports_status_data) > 0:
+                data[QSD_PORTS_STATUS] = ports_status_data
 
         if self.system_board is not None:
             system_board_data = self.system_board.data()

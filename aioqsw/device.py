@@ -18,6 +18,9 @@ from aioqsw.const import (
     API_DOWNLOAD_URL,
     API_FAN1_SPEED,
     API_FAN2_SPEED,
+    API_FULL_DUPLEX,
+    API_KEY,
+    API_LINK,
     API_MAC_ADDR,
     API_MAX_SWITCH_TEMP,
     API_MESSAGE,
@@ -29,9 +32,11 @@ from aioqsw.const import (
     API_PUB_DATE,
     API_RESULT,
     API_SERIAL,
+    API_SPEED,
     API_SWITCH_TEMP,
     API_TRUNK_NUM,
     API_UPTIME,
+    API_VAL,
     API_VERSION,
     QSD_ANOMALY,
     QSD_BUILD_NUMBER,
@@ -47,15 +52,20 @@ from aioqsw.const import (
     QSD_FAN1_SPEED,
     QSD_FAN2_SPEED,
     QSD_FIRMWARE,
+    QSD_FULL_DUPLEX,
+    QSD_ID,
+    QSD_LINK,
     QSD_MAC,
     QSD_MESSAGE,
     QSD_MODEL,
     QSD_NEWER,
     QSD_NUMBER,
     QSD_PORT_NUM,
+    QSD_PORTS,
     QSD_PRODUCT,
     QSD_PUB_DATE,
     QSD_SERIAL,
+    QSD_SPEED,
     QSD_TEMP,
     QSD_TEMP_MAX,
     QSD_TRUNK_NUM,
@@ -379,6 +389,132 @@ class FirmwareInfo:
     def get_version(self) -> str | None:
         """Get version."""
         return self.version
+
+
+class PortStatus:
+    """Single Port Status."""
+
+    def __init__(self, port_status: dict[str, Any]):
+        """Single Port Status init."""
+        self.full_duplex: bool | None = None
+        self.id: int | None = None
+        self.link: bool | None = None
+        self.speed: int | None = None
+
+        if API_KEY in port_status:
+            self.id = int(port_status[API_KEY])
+
+        if API_VAL in port_status:
+            val = port_status[API_VAL]
+
+            if API_FULL_DUPLEX in val:
+                self.full_duplex = bool(val[API_FULL_DUPLEX])
+
+            if API_LINK in val:
+                self.link = bool(val[API_LINK])
+
+            if API_SPEED in val:
+                self.speed = int(val[API_SPEED])
+
+    def data(self) -> dict[str, Any]:
+        """Return Single Port Status data."""
+        data: dict[str, Any] = {}
+
+        full_duplex = self.get_full_duplex()
+        if full_duplex is not None:
+            data[QSD_FULL_DUPLEX] = full_duplex
+
+        port_id = self.get_id()
+        if port_id is not None:
+            data[QSD_ID] = port_id
+
+        link = self.get_link()
+        if link is not None:
+            data[QSD_LINK] = link
+
+        speed = self.get_speed()
+        if speed is not None:
+            data[QSD_SPEED] = speed
+
+        return data
+
+    def get_full_duplex(self) -> bool | None:
+        """Get port full duplex."""
+        return self.full_duplex
+
+    def get_id(self) -> int | None:
+        """Get port ID."""
+        return self.id
+
+    def get_link(self) -> bool | None:
+        """Get port link connection."""
+        return self.link
+
+    def get_speed(self) -> int | None:
+        """Get port speed."""
+        return self.speed
+
+
+class PortsStatus:
+    """Ports Status."""
+
+    def __init__(self, ports_status: dict[str, Any]):
+        """Ports Status init."""
+        self.link: int | None = None
+        self.ports: dict[int, PortStatus] = {}
+
+        res = ports_status.get(API_RESULT)
+        if not res:
+            raise APIError
+
+        for port in res:
+            port_status = PortStatus(port)
+            if port_status and (_id := port_status.get_id()):
+                self.ports[_id] = port_status
+
+    def calc(self, max_ports: int) -> None:
+        """Calculate Ports Status data."""
+        link = 0
+        ports = self.get_ports()
+        if ports is not None:
+            for port_id, port in ports.items():
+                if port.get_link() and (max_ports == 0 or port_id <= max_ports):
+                    link += 1
+        self.link = link
+
+    def data(self) -> dict[str, Any]:
+        """Return Ports Status data."""
+        data: dict[str, Any] = {}
+
+        link = self.get_link()
+        if link is not None:
+            data[QSD_LINK] = link
+
+        port_num = self.get_port_num()
+        if port_num is not None:
+            data[QSD_PORT_NUM] = port_num
+
+        ports = self.get_ports()
+        if ports is not None:
+            data[QSD_PORTS] = {}
+            for port_id, port in ports.items():
+                data[QSD_PORTS][port_id] = port.data()
+
+        return data
+
+    def get_link(self) -> int | None:
+        """Get number of ports with active link."""
+        return self.link
+
+    def get_ports(self) -> dict[int, PortStatus] | None:
+        """Get ports."""
+        if len(self.ports) > 0:
+            return self.ports
+        return None
+
+    def get_port_num(self) -> int:
+        """Get number of ports."""
+        return len(self.ports)
 
 
 class SystemBoard:
