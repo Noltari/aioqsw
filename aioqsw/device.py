@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Any
 
 from aioqsw.const import (
@@ -18,6 +19,7 @@ from aioqsw.const import (
     API_DOWNLOAD_URL,
     API_FAN1_SPEED,
     API_FAN2_SPEED,
+    API_FCS_ERRORS,
     API_FULL_DUPLEX,
     API_KEY,
     API_LINK,
@@ -31,10 +33,13 @@ from aioqsw.const import (
     API_PRODUCT,
     API_PUB_DATE,
     API_RESULT,
+    API_RX_ERRORS,
+    API_RX_OCTETS,
     API_SERIAL,
     API_SPEED,
     API_SWITCH_TEMP,
     API_TRUNK_NUM,
+    API_TX_OCTETS,
     API_UPTIME,
     API_VAL,
     API_VERSION,
@@ -47,10 +52,12 @@ from aioqsw.const import (
     QSD_COMMIT_CPSS,
     QSD_COMMIT_ISS,
     QSD_DATE,
+    QSD_DATETIME,
     QSD_DESCRIPTION,
     QSD_DOWNLOAD_URLS,
     QSD_FAN1_SPEED,
     QSD_FAN2_SPEED,
+    QSD_FCS_ERRORS,
     QSD_FIRMWARE,
     QSD_FULL_DUPLEX,
     QSD_ID,
@@ -64,11 +71,17 @@ from aioqsw.const import (
     QSD_PORTS,
     QSD_PRODUCT,
     QSD_PUB_DATE,
+    QSD_RX_ERRORS,
+    QSD_RX_OCTETS,
+    QSD_RX_SPEED,
     QSD_SERIAL,
     QSD_SPEED,
     QSD_TEMP,
     QSD_TEMP_MAX,
     QSD_TRUNK_NUM,
+    QSD_TX_ERRORS,
+    QSD_TX_OCTETS,
+    QSD_TX_SPEED,
     QSD_UPTIME,
     QSD_VERSION,
 )
@@ -389,6 +402,315 @@ class FirmwareInfo:
     def get_version(self) -> str | None:
         """Get version."""
         return self.version
+
+
+class PortStatistics:
+    """Single Port Statistics."""
+
+    def __init__(self, port_stats: dict[str, Any]):
+        """Single Port Statistics init."""
+        self.fcs_errors: int | None = None
+        self.id: int | None = None
+        self.rx_errors: int | None = None
+        self.rx_octets: int | None = None
+        self.rx_speed: int = 0
+        self.tx_errors: int | None = None
+        self.tx_octets: int | None = None
+        self.tx_speed: int = 0
+
+        if API_KEY in port_stats:
+            self.id = int(port_stats[API_KEY])
+
+        if API_VAL in port_stats:
+            val = port_stats[API_VAL]
+
+            if API_FCS_ERRORS in val:
+                self.fcs_errors = int(val[API_FCS_ERRORS])
+
+            if API_RX_ERRORS in val:
+                self.rx_errors = int(val[API_RX_ERRORS])
+
+            if API_RX_OCTETS in val:
+                self.rx_octets = int(val[API_RX_OCTETS])
+
+            if API_TX_OCTETS in val:
+                self.tx_octets = int(val[API_TX_OCTETS])
+
+    @staticmethod
+    def calc_speed(
+        cur_octets: int | None, prev_octets: int | None, seconds: float
+    ) -> int:
+        """Calculate network speed."""
+        if (seconds > 0) and (cur_octets is not None) and (prev_octets is not None):
+            return int((cur_octets - prev_octets) / seconds)
+        return 0
+
+    def calc(self, prev_stats: PortStatistics, seconds: float) -> None:
+        """Calculate Port Statistics data."""
+        self.rx_speed = self.calc_speed(
+            self.get_rx_octets(), prev_stats.get_rx_octets(), seconds
+        )
+        self.tx_speed = self.calc_speed(
+            self.get_tx_octets(), prev_stats.get_tx_octets(), seconds
+        )
+
+    def data(self) -> dict[str, Any]:
+        """Return Single Port Statistics data."""
+        data: dict[str, Any] = {}
+
+        fcs_errors = self.get_fcs_errors()
+        if fcs_errors is not None:
+            data[QSD_FCS_ERRORS] = fcs_errors
+
+        port_id = self.get_id()
+        if port_id is not None:
+            data[QSD_ID] = port_id
+
+        rx_errors = self.get_rx_errors()
+        if rx_errors is not None:
+            data[QSD_RX_ERRORS] = rx_errors
+
+        rx_octets = self.get_rx_octets()
+        if rx_octets is not None:
+            data[QSD_RX_OCTETS] = rx_octets
+
+        rx_speed = self.get_rx_speed()
+        if rx_speed is not None:
+            data[QSD_RX_SPEED] = rx_speed
+
+        tx_errors = self.get_tx_errors()
+        if tx_errors is not None:
+            data[QSD_TX_ERRORS] = tx_errors
+
+        tx_octets = self.get_tx_octets()
+        if tx_octets is not None:
+            data[QSD_TX_OCTETS] = tx_octets
+
+        tx_speed = self.get_tx_speed()
+        if tx_speed is not None:
+            data[QSD_TX_SPEED] = tx_speed
+
+        return data
+
+    def get_fcs_errors(self) -> int | None:
+        """Get port FCS errors."""
+        return self.fcs_errors
+
+    def get_id(self) -> int | None:
+        """Get port ID."""
+        return self.id
+
+    def get_rx_errors(self) -> int | None:
+        """Get port RX errors."""
+        return self.rx_errors
+
+    def get_rx_octets(self) -> int | None:
+        """Get port RX octets."""
+        return self.rx_octets
+
+    def get_rx_speed(self) -> int | None:
+        """Get port RX speed."""
+        return self.rx_speed
+
+    def get_tx_errors(self) -> int | None:
+        """Get port TX errors."""
+        return self.tx_errors
+
+    def get_tx_octets(self) -> int | None:
+        """Get port TX octets."""
+        return self.tx_octets
+
+    def get_tx_speed(self) -> int | None:
+        """Get port TX speed."""
+        return self.tx_speed
+
+
+class PortsStatistics:
+    """Ports Statistics."""
+
+    def __init__(self, ports_stats: dict[str, Any], _datetime: datetime):
+        """Ports Statistics init."""
+        self._datetime = _datetime
+        self.fcs_errors: int | None = None
+        self.link: int | None = None
+        self.ports: dict[int, PortStatistics] = {}
+        self.rx_errors: int | None = None
+        self.rx_octets: int | None = None
+        self.rx_speed: int = 0
+        self.tx_errors: int | None = None
+        self.tx_octets: int | None = None
+        self.tx_speed: int = 0
+
+        res = ports_stats.get(API_RESULT)
+        if not res:
+            raise APIError
+
+        for port in res:
+            port_stats = PortStatistics(port)
+            if port_stats and (_id := port_stats.get_id()):
+                self.ports[_id] = port_stats
+
+    @staticmethod
+    def calc_speed(
+        cur_octets: int | None, prev_octets: int | None, seconds: float
+    ) -> int:
+        """Calculate network speed."""
+        if seconds > 0 and cur_octets is not None and prev_octets is not None:
+            return int((cur_octets - prev_octets) / seconds)
+        return 0
+
+    def calc(self, max_ports: int, prev_stats: PortsStatistics | None) -> None:
+        """Calculate Ports Statistics data."""
+        fcs_errors = 0
+        rx_errors = 0
+        rx_octets = 0
+        rx_speed = 0
+        tx_octets = 0
+        tx_speed = 0
+        ports = self.get_ports()
+
+        if (
+            (prev_stats is not None)
+            and (prev_datetime := prev_stats.get_datetime())
+            and (prev_datetime is not None)
+            and (cur_datetime := self.get_datetime())
+            and (cur_datetime is not None)
+        ):
+            seconds = (cur_datetime - prev_datetime).total_seconds()
+        else:
+            seconds = 0
+
+        if ports is not None:
+            for port_id, port in ports.items():
+                if max_ports == 0 or port_id <= max_ports:
+                    port_fcs_errors = port.get_fcs_errors()
+                    if port_fcs_errors is not None:
+                        fcs_errors += port_fcs_errors
+
+                    port_rx_errors = port.get_rx_errors()
+                    if port_rx_errors is not None:
+                        rx_errors += port_rx_errors
+
+                    port_rx_octets = port.get_rx_octets()
+                    if port_rx_octets is not None:
+                        rx_octets += port_rx_octets
+
+                    port_tx_octets = port.get_tx_octets()
+                    if port_tx_octets is not None:
+                        tx_octets += port_tx_octets
+
+                    if (
+                        (seconds > 0)
+                        and (prev_stats is not None)
+                        and (prev := prev_stats.get_port(port_id))
+                        and (prev is not None)
+                    ):
+                        port.calc(prev, seconds)
+
+        if prev_stats is not None and seconds > 0:
+            rx_speed = self.calc_speed(rx_octets, prev_stats.get_rx_octets(), seconds)
+            tx_speed = self.calc_speed(tx_octets, prev_stats.get_tx_octets(), seconds)
+
+        self.fcs_errors = fcs_errors
+        self.rx_errors = rx_errors
+        self.rx_octets = rx_octets
+        self.rx_speed = rx_speed
+        self.tx_octets = tx_octets
+        self.tx_speed = tx_speed
+
+    def data(self) -> dict[str, Any]:
+        """Return Ports Statistics data."""
+        data: dict[str, Any] = {}
+
+        _datetime = self.get_datetime()
+        if _datetime is not None:
+            data[QSD_DATETIME] = _datetime.strftime("%Y/%m/%d %H:%M:%S")
+
+        fcs_errors = self.get_fcs_errors()
+        if fcs_errors is not None:
+            data[QSD_FCS_ERRORS] = fcs_errors
+
+        port_num = self.get_port_num()
+        if port_num is not None:
+            data[QSD_PORT_NUM] = port_num
+
+        rx_errors = self.get_rx_errors()
+        if rx_errors is not None:
+            data[QSD_RX_ERRORS] = rx_errors
+
+        rx_octets = self.get_rx_octets()
+        if rx_octets is not None:
+            data[QSD_RX_OCTETS] = rx_octets
+
+        rx_speed = self.get_rx_speed()
+        if rx_speed is not None:
+            data[QSD_RX_SPEED] = rx_speed
+
+        tx_errors = self.get_tx_errors()
+        if tx_errors is not None:
+            data[QSD_TX_ERRORS] = tx_errors
+
+        tx_octets = self.get_tx_octets()
+        if tx_octets is not None:
+            data[QSD_TX_OCTETS] = tx_octets
+
+        tx_speed = self.get_tx_speed()
+        if tx_speed is not None:
+            data[QSD_TX_SPEED] = tx_speed
+
+        ports = self.get_ports()
+        if ports is not None:
+            data[QSD_PORTS] = {}
+            for port_id, port in ports.items():
+                data[QSD_PORTS][port_id] = port.data()
+
+        return data
+
+    def get_datetime(self) -> datetime | None:
+        """Get statistics datetime."""
+        return self._datetime
+
+    def get_fcs_errors(self) -> int | None:
+        """Get total FCS errors."""
+        return self.fcs_errors
+
+    def get_ports(self) -> dict[int, PortStatistics] | None:
+        """Get ports."""
+        if len(self.ports) > 0:
+            return self.ports
+        return None
+
+    def get_port(self, port_id: int) -> PortStatistics | None:
+        """Get Port by ID."""
+        return self.ports.get(port_id)
+
+    def get_port_num(self) -> int:
+        """Get number of ports."""
+        return len(self.ports)
+
+    def get_rx_errors(self) -> int | None:
+        """Get total RX errors."""
+        return self.rx_errors
+
+    def get_rx_octets(self) -> int | None:
+        """Get total RX octets."""
+        return self.rx_octets
+
+    def get_rx_speed(self) -> int | None:
+        """Get total RX speed."""
+        return self.rx_speed
+
+    def get_tx_errors(self) -> int | None:
+        """Get total TX errors."""
+        return self.tx_errors
+
+    def get_tx_octets(self) -> int | None:
+        """Get total TX octets."""
+        return self.tx_octets
+
+    def get_tx_speed(self) -> int | None:
+        """Get total TX speed."""
+        return self.tx_speed
 
 
 class PortStatus:

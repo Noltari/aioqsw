@@ -21,6 +21,7 @@ disable=
   too-many-branches,
   too-many-statements,
   C0103,
+  C0302,
   R0801,
   R0914
 

@@ -6,6 +6,7 @@ import base64
 import json
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, cast
 
 from aiohttp import ClientSession, ContentTypeError
@@ -16,6 +17,7 @@ from aioqsw.device import (
     FirmwareCheck,
     FirmwareCondition,
     FirmwareInfo,
+    PortsStatistics,
     PortsStatus,
     SystemBoard,
     SystemSensor,
@@ -37,6 +39,7 @@ from .const import (
     QSD_FIRMWARE_CHECK,
     QSD_FIRMWARE_CONDITION,
     QSD_FIRMWARE_INFO,
+    QSD_PORTS_STATISTICS,
     QSD_PORTS_STATUS,
     QSD_SYSTEM_BOARD,
     QSD_SYSTEM_SENSOR,
@@ -83,6 +86,7 @@ class QnapQswApi:
         self.firmware_info: FirmwareInfo | None = None
         self.headers: dict[str, str] = {}
         self.options = options
+        self.ports_statistics: PortsStatistics | None = None
         self.ports_status: PortsStatus | None = None
         self.system_board: SystemBoard | None = None
         self.system_sensor: SystemSensor | None = None
@@ -182,6 +186,10 @@ class QnapQswApi:
         """API GET live."""
         return await self.http_request("GET", f"{API_PATH}/live")
 
+    async def get_ports_statistics(self) -> dict[str, Any]:
+        """API GET ports status."""
+        return await self.http_request("GET", f"{API_PATH_V1}/ports/statistics")
+
     async def get_ports_status(self) -> dict[str, Any]:
         """API GET ports status."""
         return await self.http_request("GET", f"{API_PATH_V1}/ports/status")
@@ -251,6 +259,7 @@ class QnapQswApi:
     async def validate(self) -> SystemBoard:
         """Validate QNAP QSW."""
         self._first_update = True
+        self.ports_statistics = None
 
         try:
             await self.get_live()
@@ -292,6 +301,12 @@ class QnapQswApi:
                 port_num = self.system_board.get_port_num()
                 if port_num is not None:
                     max_ports = port_num
+
+            ports_statistics_data = await self.get_ports_statistics()
+            _datetime = datetime.utcnow()
+            ports_statistics = PortsStatistics(ports_statistics_data, _datetime)
+            ports_statistics.calc(max_ports, self.ports_statistics)
+            self.ports_statistics = ports_statistics
 
             ports_status_data = await self.get_ports_status()
             ports_status = PortsStatus(ports_status_data)
@@ -391,6 +406,11 @@ class QnapQswApi:
             firmware_info_data = self.firmware_info.data()
             if len(firmware_info_data) > 0:
                 data[QSD_FIRMWARE_INFO] = firmware_info_data
+
+        if self.ports_statistics is not None:
+            ports_statistics_data = self.ports_statistics.data()
+            if len(ports_statistics_data) > 0:
+                data[QSD_PORTS_STATISTICS] = ports_statistics_data
 
         if self.ports_status is not None:
             ports_status_data = self.ports_status.data()
