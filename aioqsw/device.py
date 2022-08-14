@@ -587,6 +587,10 @@ class PortStatistics:
         """Get port TX speed."""
         return self.tx_speed
 
+    def set_id(self, _id: int) -> None:
+        """Set port ID."""
+        self.id = _id
+
 
 class PortsStatistics:
     """Ports Statistics."""
@@ -613,13 +617,26 @@ class PortsStatistics:
         if not res:
             raise APIError
 
+        lacp_id_min = None
+        lacp_ports: dict[int, PortStatistics] = {}
         for port in res:
             port_stats = PortStatistics(port)
             if port_stats and (port_id := port_stats.get_id()):
                 if lacp_start is None or port_id < lacp_start:
                     self.ports[port_id] = port_stats
                 else:
-                    self.lacp_ports[port_id] = port_stats
+                    lacp_ports[port_id] = port_stats
+                    if lacp_id_min is None or port_id < lacp_id_min:
+                        lacp_id_min = port_id
+
+        if lacp_id_min is not None:
+            lacp_id_min -= 1
+            for port in lacp_ports.values():
+                port_id = port.get_id()
+                if port_id is not None:
+                    port_id -= lacp_id_min
+                    port.set_id(port_id)
+                    self.lacp_ports[port_id] = port
 
     @staticmethod
     def calc_speed(
@@ -889,6 +906,10 @@ class PortStatus:
         """Get port speed."""
         return self.speed
 
+    def set_id(self, _id: int) -> None:
+        """Set port ID."""
+        self.id = _id
+
 
 class PortsStatus:
     """Ports Status."""
@@ -903,13 +924,26 @@ class PortsStatus:
         if not res:
             raise APIError
 
+        lacp_id_min = None
+        lacp_ports: dict[int, PortStatus] = {}
         for port in res:
             port_status = PortStatus(port)
             if port_status and (port_id := port_status.get_id()):
                 if lacp_start is None or port_id < lacp_start:
                     self.ports[port_id] = port_status
                 else:
-                    self.lacp_ports[port_id] = port_status
+                    lacp_ports[port_id] = port_status
+                    if lacp_id_min is None or port_id < lacp_id_min:
+                        lacp_id_min = port_id
+
+        if lacp_id_min is not None:
+            lacp_id_min -= 1
+            for port in lacp_ports.values():
+                port_id = port.get_id()
+                if port_id is not None:
+                    port_id -= lacp_id_min
+                    port.set_id(port_id)
+                    self.lacp_ports[port_id] = port
 
     def calc(self) -> None:
         """Calculate Ports Status data."""
