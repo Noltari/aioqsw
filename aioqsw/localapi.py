@@ -17,6 +17,7 @@ from aioqsw.device import (
     FirmwareCheck,
     FirmwareCondition,
     FirmwareInfo,
+    LACPInfo,
     PortsStatistics,
     PortsStatus,
     SystemBoard,
@@ -85,6 +86,7 @@ class QnapQswApi:
         self.firmware_condition: FirmwareCondition | None = None
         self.firmware_info: FirmwareInfo | None = None
         self.headers: dict[str, str] = {}
+        self.lacp_info: LACPInfo | None = None
         self.options = options
         self.ports_statistics: PortsStatistics | None = None
         self.ports_status: PortsStatus | None = None
@@ -181,6 +183,10 @@ class QnapQswApi:
     async def get_firmware_update_check(self) -> dict[str, Any]:
         """API GET firmware update check."""
         return await self.http_request("GET", f"{API_PATH_V1}/firmware/update/check")
+
+    async def get_lacp_info(self) -> dict[str, Any]:
+        """API GET LACP info."""
+        return await self.http_request("GET", f"{API_PATH_V1}/lacp/info")
 
     async def get_live(self) -> dict[str, Any]:
         """API GET live."""
@@ -290,27 +296,35 @@ class QnapQswApi:
                 firmware_info = await self.get_firmware_info()
                 self.firmware_info = FirmwareInfo(firmware_info)
 
+            # Update lacp/info once
+            if self.lacp_info is None:
+                lacp_info = await self.get_lacp_info()
+                self.lacp_info = LACPInfo(lacp_info)
+
             # Update system/board once
             if self.system_board is None:
                 system_board = await self.get_system_board()
                 self.system_board = SystemBoard(system_board)
 
-            # Get max ports from system/board
-            max_ports = 0
-            if self.system_board is not None:
-                port_num = self.system_board.get_port_num()
-                if port_num is not None:
-                    max_ports = port_num
+            # Get LACP ports start from lacp/info
+            if self.lacp_info is not None:
+                lacp_start = self.lacp_info.get_start_id()
+            elif self.system_board is not None:
+                lacp_start = self.system_board.get_port_num() + 1
+            else:
+                lacp_start = None
 
             ports_statistics_data = await self.get_ports_statistics()
             _datetime = datetime.utcnow()
-            ports_statistics = PortsStatistics(ports_statistics_data, _datetime)
-            ports_statistics.calc(max_ports, self.ports_statistics)
+            ports_statistics = PortsStatistics(
+                ports_statistics_data, lacp_start, _datetime
+            )
+            ports_statistics.calc(self.ports_statistics)
             self.ports_statistics = ports_statistics
 
             ports_status_data = await self.get_ports_status()
-            ports_status = PortsStatus(ports_status_data)
-            ports_status.calc(max_ports)
+            ports_status = PortsStatus(ports_status_data, lacp_start)
+            ports_status.calc()
             self.ports_status = ports_status
 
             system_time = await self.get_system_time()

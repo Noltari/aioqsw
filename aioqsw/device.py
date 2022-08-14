@@ -24,6 +24,8 @@ from aioqsw.const import (
     API_KEY,
     API_LINK,
     API_MAC_ADDR,
+    API_MAX_PORT_CHANNELS,
+    API_MAX_PORTS_PER_PORT_CHANNEL,
     API_MAX_SWITCH_TEMP,
     API_MESSAGE,
     API_MODEL,
@@ -37,6 +39,7 @@ from aioqsw.const import (
     API_RX_OCTETS,
     API_SERIAL,
     API_SPEED,
+    API_START_INDEX,
     API_SWITCH_TEMP,
     API_TRUNK_NUM,
     API_TX_OCTETS,
@@ -61,8 +64,12 @@ from aioqsw.const import (
     QSD_FIRMWARE,
     QSD_FULL_DUPLEX,
     QSD_ID,
+    QSD_LACP_PORT_NUM,
+    QSD_LACP_PORTS,
     QSD_LINK,
     QSD_MAC,
+    QSD_MAX_CHANNEL_PORTS,
+    QSD_MAX_CHANNELS,
     QSD_MESSAGE,
     QSD_MODEL,
     QSD_NEWER,
@@ -76,6 +83,8 @@ from aioqsw.const import (
     QSD_RX_SPEED,
     QSD_SERIAL,
     QSD_SPEED,
+    QSD_START_ID,
+    QSD_START_INDEX,
     QSD_TEMP,
     QSD_TEMP_MAX,
     QSD_TRUNK_NUM,
@@ -403,6 +412,70 @@ class FirmwareInfo:
         return self.version
 
 
+class LACPInfo:
+    """LACP Info."""
+
+    def __init__(self, lacp_info: dict[str, Any]):
+        """LACP Info init."""
+        self.max_channels: int | None = None
+        self.max_channel_ports: int | None = None
+        self.start_index: int | None = None
+
+        res = lacp_info.get(API_RESULT)
+        if not res:
+            raise APIError
+
+        if API_MAX_PORT_CHANNELS in res:
+            self.max_channels = int(res[API_MAX_PORT_CHANNELS])
+
+        if API_MAX_PORTS_PER_PORT_CHANNEL in res:
+            self.max_channel_ports = int(res[API_MAX_PORTS_PER_PORT_CHANNEL])
+
+        if API_START_INDEX in res:
+            self.start_index = int(res[API_START_INDEX])
+
+    def data(self) -> dict[str, Any]:
+        """Return LACP Info data."""
+        data: dict[str, Any] = {}
+
+        max_channels = self.get_max_channels()
+        if max_channels is not None:
+            data[QSD_MAX_CHANNELS] = max_channels
+
+        max_channel_ports = self.get_max_channel_ports()
+        if max_channel_ports is not None:
+            data[QSD_MAX_CHANNEL_PORTS] = max_channel_ports
+
+        start_id = self.get_start_id()
+        if start_id is not None:
+            data[QSD_START_ID] = start_id
+
+        start_index = self.get_start_index()
+        if start_index is not None:
+            data[QSD_START_INDEX] = start_index
+
+        return data
+
+    def get_max_channels(self) -> int | None:
+        """Get max channels."""
+        return self.max_channels
+
+    def get_max_channel_ports(self) -> int | None:
+        """Get max ports per channel."""
+        return self.max_channel_ports
+
+    def get_start_id(self) -> int | None:
+        """Get start ID."""
+        start_index = self.get_start_index()
+        if start_index is not None:
+            return start_index + 1
+        return None
+
+    def get_start_index(self) -> int | None:
+        """Get start index."""
+        return self.start_index
+
+
 class PortStatistics:
     """Single Port Statistics."""
 
@@ -518,10 +591,16 @@ class PortStatistics:
 class PortsStatistics:
     """Ports Statistics."""
 
-    def __init__(self, ports_stats: dict[str, Any], _datetime: datetime):
+    def __init__(
+        self,
+        ports_stats: dict[str, Any],
+        lacp_start: int | None,
+        _datetime: datetime,
+    ):
         """Ports Statistics init."""
         self._datetime = _datetime
         self.fcs_errors: int | None = None
+        self.lacp_ports: dict[int, PortStatistics] = {}
         self.link: int | None = None
         self.ports: dict[int, PortStatistics] = {}
         self.rx_errors: int | None = None
@@ -536,8 +615,11 @@ class PortsStatistics:
 
         for port in res:
             port_stats = PortStatistics(port)
-            if port_stats and (_id := port_stats.get_id()):
-                self.ports[_id] = port_stats
+            if port_stats and (port_id := port_stats.get_id()):
+                if lacp_start is None or port_id < lacp_start:
+                    self.ports[port_id] = port_stats
+                else:
+                    self.lacp_ports[port_id] = port_stats
 
     @staticmethod
     def calc_speed(
@@ -548,9 +630,10 @@ class PortsStatistics:
             return int((cur_octets - prev_octets) / seconds)
         return 0
 
-    def calc(self, max_ports: int, prev_stats: PortsStatistics | None) -> None:
+    def calc(self, prev_stats: PortsStatistics | None) -> None:
         """Calculate Ports Statistics data."""
         fcs_errors = 0
+        lacp_ports = self.get_lacp_ports()
         rx_errors = 0
         rx_octets = 0
         rx_speed = 0
@@ -569,32 +652,57 @@ class PortsStatistics:
         else:
             seconds = 0
 
+        if lacp_ports is not None:
+            for port_id, port in lacp_ports.items():
+                port_fcs_errors = port.get_fcs_errors()
+                if port_fcs_errors is not None:
+                    fcs_errors += port_fcs_errors
+
+                port_rx_errors = port.get_rx_errors()
+                if port_rx_errors is not None:
+                    rx_errors += port_rx_errors
+
+                port_rx_octets = port.get_rx_octets()
+                if port_rx_octets is not None:
+                    rx_octets += port_rx_octets
+
+                port_tx_octets = port.get_tx_octets()
+                if port_tx_octets is not None:
+                    tx_octets += port_tx_octets
+
+                if (
+                    (seconds > 0)
+                    and (prev_stats is not None)
+                    and (prev := prev_stats.get_lacp_port(port_id))
+                    and (prev is not None)
+                ):
+                    port.calc(prev, seconds)
+
         if ports is not None:
             for port_id, port in ports.items():
-                if max_ports == 0 or port_id <= max_ports:
-                    port_fcs_errors = port.get_fcs_errors()
-                    if port_fcs_errors is not None:
-                        fcs_errors += port_fcs_errors
+                port_fcs_errors = port.get_fcs_errors()
+                if port_fcs_errors is not None:
+                    fcs_errors += port_fcs_errors
 
-                    port_rx_errors = port.get_rx_errors()
-                    if port_rx_errors is not None:
-                        rx_errors += port_rx_errors
+                port_rx_errors = port.get_rx_errors()
+                if port_rx_errors is not None:
+                    rx_errors += port_rx_errors
 
-                    port_rx_octets = port.get_rx_octets()
-                    if port_rx_octets is not None:
-                        rx_octets += port_rx_octets
+                port_rx_octets = port.get_rx_octets()
+                if port_rx_octets is not None:
+                    rx_octets += port_rx_octets
 
-                    port_tx_octets = port.get_tx_octets()
-                    if port_tx_octets is not None:
-                        tx_octets += port_tx_octets
+                port_tx_octets = port.get_tx_octets()
+                if port_tx_octets is not None:
+                    tx_octets += port_tx_octets
 
-                    if (
-                        (seconds > 0)
-                        and (prev_stats is not None)
-                        and (prev := prev_stats.get_port(port_id))
-                        and (prev is not None)
-                    ):
-                        port.calc(prev, seconds)
+                if (
+                    (seconds > 0)
+                    and (prev_stats is not None)
+                    and (prev := prev_stats.get_port(port_id))
+                    and (prev is not None)
+                ):
+                    port.calc(prev, seconds)
 
         if prev_stats is not None and seconds > 0:
             rx_speed = self.calc_speed(rx_octets, prev_stats.get_rx_octets(), seconds)
@@ -618,6 +726,16 @@ class PortsStatistics:
         fcs_errors = self.get_fcs_errors()
         if fcs_errors is not None:
             data[QSD_FCS_ERRORS] = fcs_errors
+
+        lacp_port_num = self.get_lacp_port_num()
+        if lacp_port_num is not None:
+            data[QSD_LACP_PORT_NUM] = lacp_port_num
+
+        lacp_ports = self.get_lacp_ports()
+        if lacp_ports is not None:
+            data[QSD_LACP_PORTS] = {}
+            for port_id, port in lacp_ports.items():
+                data[QSD_LACP_PORTS][port_id] = port.data()
 
         port_num = self.get_port_num()
         if port_num is not None:
@@ -658,6 +776,20 @@ class PortsStatistics:
     def get_fcs_errors(self) -> int | None:
         """Get total FCS errors."""
         return self.fcs_errors
+
+    def get_lacp_ports(self) -> dict[int, PortStatistics] | None:
+        """Get LACP ports."""
+        if len(self.lacp_ports) > 0:
+            return self.lacp_ports
+        return None
+
+    def get_lacp_port(self, port_id: int) -> PortStatistics | None:
+        """Get LACP Port by ID."""
+        return self.lacp_ports.get(port_id)
+
+    def get_lacp_port_num(self) -> int:
+        """Get number of LACP ports."""
+        return len(self.lacp_ports)
 
     def get_ports(self) -> dict[int, PortStatistics] | None:
         """Get ports."""
@@ -761,10 +893,11 @@ class PortStatus:
 class PortsStatus:
     """Ports Status."""
 
-    def __init__(self, ports_status: dict[str, Any]):
+    def __init__(self, ports_status: dict[str, Any], lacp_start: int | None):
         """Ports Status init."""
         self.link: int | None = None
         self.ports: dict[int, PortStatus] = {}
+        self.lacp_ports: dict[int, PortStatus] = {}
 
         res = ports_status.get(API_RESULT)
         if not res:
@@ -772,22 +905,35 @@ class PortsStatus:
 
         for port in res:
             port_status = PortStatus(port)
-            if port_status and (_id := port_status.get_id()):
-                self.ports[_id] = port_status
+            if port_status and (port_id := port_status.get_id()):
+                if lacp_start is None or port_id < lacp_start:
+                    self.ports[port_id] = port_status
+                else:
+                    self.lacp_ports[port_id] = port_status
 
-    def calc(self, max_ports: int) -> None:
+    def calc(self) -> None:
         """Calculate Ports Status data."""
         link = 0
         ports = self.get_ports()
         if ports is not None:
-            for port_id, port in ports.items():
-                if port.get_link() and (max_ports == 0 or port_id <= max_ports):
+            for port in ports.values():
+                if port.get_link():
                     link += 1
         self.link = link
 
     def data(self) -> dict[str, Any]:
         """Return Ports Status data."""
         data: dict[str, Any] = {}
+
+        lacp_port_num = self.get_lacp_port_num()
+        if lacp_port_num is not None:
+            data[QSD_LACP_PORT_NUM] = lacp_port_num
+
+        lacp_ports = self.get_lacp_ports()
+        if lacp_ports is not None:
+            data[QSD_LACP_PORTS] = {}
+            for port_id, port in lacp_ports.items():
+                data[QSD_LACP_PORTS][port_id] = port.data()
 
         link = self.get_link()
         if link is not None:
@@ -804,6 +950,16 @@ class PortsStatus:
                 data[QSD_PORTS][port_id] = port.data()
 
         return data
+
+    def get_lacp_ports(self) -> dict[int, PortStatus] | None:
+        """Get LACP ports."""
+        if len(self.lacp_ports) > 0:
+            return self.lacp_ports
+        return None
+
+    def get_lacp_port_num(self) -> int:
+        """Get number of LACP ports."""
+        return len(self.lacp_ports)
 
     def get_link(self) -> int | None:
         """Get number of ports with active link."""
