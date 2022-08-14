@@ -79,7 +79,6 @@ from aioqsw.const import (
     QSD_TEMP,
     QSD_TEMP_MAX,
     QSD_TRUNK_NUM,
-    QSD_TX_ERRORS,
     QSD_TX_OCTETS,
     QSD_TX_SPEED,
     QSD_UPTIME,
@@ -414,7 +413,6 @@ class PortStatistics:
         self.rx_errors: int | None = None
         self.rx_octets: int | None = None
         self.rx_speed: int = 0
-        self.tx_errors: int | None = None
         self.tx_octets: int | None = None
         self.tx_speed: int = 0
 
@@ -478,10 +476,6 @@ class PortStatistics:
         if rx_speed is not None:
             data[QSD_RX_SPEED] = rx_speed
 
-        tx_errors = self.get_tx_errors()
-        if tx_errors is not None:
-            data[QSD_TX_ERRORS] = tx_errors
-
         tx_octets = self.get_tx_octets()
         if tx_octets is not None:
             data[QSD_TX_OCTETS] = tx_octets
@@ -512,10 +506,6 @@ class PortStatistics:
         """Get port RX speed."""
         return self.rx_speed
 
-    def get_tx_errors(self) -> int | None:
-        """Get port TX errors."""
-        return self.tx_errors
-
     def get_tx_octets(self) -> int | None:
         """Get port TX octets."""
         return self.tx_octets
@@ -537,7 +527,6 @@ class PortsStatistics:
         self.rx_errors: int | None = None
         self.rx_octets: int | None = None
         self.rx_speed: int = 0
-        self.tx_errors: int | None = None
         self.tx_octets: int | None = None
         self.tx_speed: int = 0
 
@@ -646,10 +635,6 @@ class PortsStatistics:
         if rx_speed is not None:
             data[QSD_RX_SPEED] = rx_speed
 
-        tx_errors = self.get_tx_errors()
-        if tx_errors is not None:
-            data[QSD_TX_ERRORS] = tx_errors
-
         tx_octets = self.get_tx_octets()
         if tx_octets is not None:
             data[QSD_TX_OCTETS] = tx_octets
@@ -699,10 +684,6 @@ class PortsStatistics:
     def get_rx_speed(self) -> int | None:
         """Get total RX speed."""
         return self.rx_speed
-
-    def get_tx_errors(self) -> int | None:
-        """Get total TX errors."""
-        return self.tx_errors
 
     def get_tx_octets(self) -> int | None:
         """Get total TX octets."""
