@@ -28,9 +28,13 @@ from aioqsw.device import (
 from .const import (
     API_AUTHORIZATION,
     API_COMMAND,
+    API_DONE,
+    API_DOWNLOAD_SIZE,
+    API_FIRMWARE_SIZE,
     API_PASSWORD,
     API_PATH,
     API_PATH_V1,
+    API_PROGRESS,
     API_QSW_ID,
     API_QSW_LANG,
     API_REBOOT,
@@ -85,6 +89,7 @@ class QnapQswApi:
         self.firmware_check: FirmwareCheck | None = None
         self.firmware_condition: FirmwareCondition | None = None
         self.firmware_info: FirmwareInfo | None = None
+        self.firmware_progress: float = 0.0
         self.headers: dict[str, str] = {}
         self.lacp_info: LACPInfo | None = None
         self.options = options
@@ -227,6 +232,12 @@ class QnapQswApi:
         }
         return await self.http_request("POST", f"{API_PATH_V1}/system/command", params)
 
+    async def post_firmware_update_live(self) -> dict[str, Any]:
+        """API POST live firmware update."""
+        return await self.http_request(
+            "POST", f"{API_PATH_V1}/firmware/update/live", {}
+        )
+
     async def post_users_exit(self) -> dict[str, Any]:
         """API POST users exit."""
         return await self.http_request("POST", f"{API_PATH_V1}/users/exit", {})
@@ -250,15 +261,54 @@ class QnapQswApi:
 
         return await self.get_system_config()
 
+    async def live_update(self) -> bool:
+        """Update QNAP QSW to live firmware."""
+        await self.login()
+
+        self.firmware_progress = 0.0
+        response = await self.post_firmware_update_live()
+
+        result = response.get(API_RESULT, "")
+        if result is not None:
+            raise APIError(f"Error when updating: {response}")
+
+        return True
+
     async def reboot(self) -> bool:
         """Reboot QNAP QSW."""
         await self.login()
 
         response = await self.post_system_command(API_REBOOT)
 
-        result = response.get(API_RESULT)
-        if not result:
+        result = response.get(API_RESULT, "")
+        if result is not None:
             raise APIError(f"Error when rebooting: {response}")
+
+        return True
+
+    async def update_progress(self) -> float:
+        """Get QNAP QSW update progress."""
+        response = await self.get_firmware_update()
+
+        result = response.get(API_RESULT)
+        if result and result[API_RESULT] is dict:
+            if result.keys() >= {API_DOWNLOAD_SIZE, API_FIRMWARE_SIZE}:
+                dl_size = float(result[API_DOWNLOAD_SIZE])
+                fw_size = float(result[API_FIRMWARE_SIZE])
+                self.firmware_progress = dl_size * 100.0 / fw_size
+
+        return self.firmware_progress
+
+    async def update_status(self) -> bool:
+        """Get QNAP QSW update status."""
+        response = await self.get_firmware_status()
+
+        result = response.get(API_RESULT, "")
+        if result is None:
+            return False
+        if result and result[API_RESULT] is dict:
+            if API_PROGRESS in result and result[API_PROGRESS] == API_DONE:
+                return False
 
         return True
 
