@@ -31,6 +31,7 @@ from .const import (
     API_DONE,
     API_DOWNLOAD_SIZE,
     API_FIRMWARE_SIZE,
+    API_NONE,
     API_PASSWORD,
     API_PATH,
     API_PATH_V1,
@@ -268,8 +269,8 @@ class QnapQswApi:
         self.firmware_progress = 0.0
         response = await self.post_firmware_update_live()
 
-        result = response.get(API_RESULT, "")
-        if result is not None:
+        result = response.get(API_RESULT)
+        if API_RESULT not in response or result != API_NONE:
             raise APIError(f"Error when updating: {response}")
 
         return True
@@ -280,8 +281,8 @@ class QnapQswApi:
 
         response = await self.post_system_command(API_REBOOT)
 
-        result = response.get(API_RESULT, "")
-        if result is not None:
+        result = response.get(API_RESULT)
+        if API_RESULT not in response or result != API_NONE:
             raise APIError(f"Error when rebooting: {response}")
 
         return True
@@ -291,7 +292,7 @@ class QnapQswApi:
         response = await self.get_firmware_update()
 
         result = response.get(API_RESULT)
-        if result and result[API_RESULT] is dict:
+        if result is dict:
             if result.keys() >= {API_DOWNLOAD_SIZE, API_FIRMWARE_SIZE}:
                 dl_size = float(result[API_DOWNLOAD_SIZE])
                 fw_size = float(result[API_FIRMWARE_SIZE])
@@ -303,10 +304,10 @@ class QnapQswApi:
         """Get QNAP QSW update status."""
         response = await self.get_firmware_status()
 
-        result = response.get(API_RESULT, "")
-        if result is None:
+        result = response.get(API_RESULT)
+        if API_RESULT in response and result == API_NONE:
             return False
-        if result and result[API_RESULT] is dict:
+        if result is dict:
             if API_PROGRESS in result and result[API_PROGRESS] == API_DONE:
                 return False
 
