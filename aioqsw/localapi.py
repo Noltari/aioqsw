@@ -148,10 +148,9 @@ class QnapQswApi:
         resp_json = None
         try:
             resp_json = await resp.json()
+            _LOGGER.debug("aiohttp response: %s", resp_json)
         except ContentTypeError as err:
             raise InvalidResponse from err
-        else:
-            _LOGGER.debug("aiohttp response: %s", resp_json)
 
         if resp.status == 401:
             raise LoginError("Login error @ {method} /{path}")
@@ -383,13 +382,13 @@ class QnapQswApi:
         except QswError as err:
             system_sensor.cancel()
             raise err
-        else:
-            try:
-                self.system_sensor = SystemSensor(await system_sensor)
-            except InternalServerError as err:
-                if self._first_update:
-                    raise err
-                _LOGGER.warning(err)
+
+        try:
+            self.system_sensor = SystemSensor(await system_sensor)
+        except InternalServerError as err:
+            if self._first_update:
+                raise err
+            _LOGGER.warning(err)
 
         self._first_update = False
 
