@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any, cast
 
 from aiohttp import ClientSession, ContentTypeError
-from aiohttp.client_exceptions import ClientConnectorError
+from aiohttp.client_exceptions import ClientError
 from aiohttp.client_reqrep import ClientResponse
 
 from aioqsw.device import (
@@ -115,7 +115,7 @@ class QnapQswApi:
                 headers=self.headers,
                 timeout=HTTP_CALL_TIMEOUT,
             )
-        except ClientConnectorError as err:
+        except ClientError as err:
             raise InvalidHost from err
 
         resp_bytes = await resp.read()
@@ -142,7 +142,7 @@ class QnapQswApi:
                 headers=self.headers,
                 timeout=HTTP_CALL_TIMEOUT,
             )
-        except ClientConnectorError as err:
+        except ClientError as err:
             raise InvalidHost from err
 
         resp_json = None
