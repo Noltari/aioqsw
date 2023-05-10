@@ -157,7 +157,8 @@ class QnapQswApi:
         if resp.status != 200:
             if resp.status == 500:
                 raise InternalServerError(
-                    f"Internal server error @ {method} /{path} HTTP={resp.status} Resp={resp_json}"
+                    f"Internal server error @ {method} /{path} HTTP={resp.status}"
+                    f"Resp={resp_json}"
                 )
             raise APIError(
                 f"API error @ {method} /{path} HTTP={resp.status} Resp={resp_json}"
