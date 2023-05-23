@@ -116,7 +116,7 @@ class QnapQswApi:
                 timeout=HTTP_CALL_TIMEOUT,
             )
         except ClientError as err:
-            raise InvalidHost from err
+            raise InvalidHost(err) from err
 
         resp_bytes = await resp.read()
 
@@ -143,14 +143,14 @@ class QnapQswApi:
                 timeout=HTTP_CALL_TIMEOUT,
             )
         except ClientError as err:
-            raise InvalidHost from err
+            raise InvalidHost(err) from err
 
         resp_json = None
         try:
             resp_json = await resp.json()
             _LOGGER.debug("aiohttp response: %s", resp_json)
         except ContentTypeError as err:
-            raise InvalidResponse from err
+            raise InvalidResponse(err) from err
 
         if resp.status == 401:
             raise LoginError("Login error @ {method} /{path}")
@@ -321,12 +321,12 @@ class QnapQswApi:
         try:
             await self.get_live()
         except APIError as err:
-            raise InvalidHost from err
+            raise InvalidHost(err) from err
 
         try:
             await self._login()
         except APIError as err:
-            raise LoginError from err
+            raise LoginError(err) from err
 
         res = await self.get_system_board()
         return SystemBoard(res)
@@ -424,7 +424,7 @@ class QnapQswApi:
         try:
             login = await self.post_users_login(params)
         except APIError as err:
-            raise LoginError from err
+            raise LoginError(err) from err
 
         if API_RESULT not in login:
             raise LoginError("Invalid login response")
