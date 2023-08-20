@@ -6,7 +6,7 @@ import base64
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from aiohttp import ClientSession, ContentTypeError
@@ -366,7 +366,7 @@ class QnapQswApi:
                 lacp_start = None
 
             ports_statistics_data = await self.get_ports_statistics()
-            _datetime = datetime.utcnow()
+            _datetime = datetime.now(tz=timezone.utc).replace(tzinfo=None)
             ports_statistics = PortsStatistics(
                 ports_statistics_data, lacp_start, _datetime
             )
