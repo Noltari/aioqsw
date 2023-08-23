@@ -1,8 +1,8 @@
 """QNAP QSW Device."""
 from __future__ import annotations
 
-import re
 from datetime import datetime
+import re
 from typing import Any
 
 from aioqsw.const import (
