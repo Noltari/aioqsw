@@ -53,6 +53,7 @@ from .const import (
 )
 from .exceptions import (
     APIError,
+    APITimeout,
     InternalServerError,
     InvalidHost,
     InvalidResponse,
@@ -117,6 +118,8 @@ class QnapQswApi:
             )
         except ClientError as err:
             raise InvalidHost(err) from err
+        except asyncio.TimeoutError as err:
+            raise APITimeout(err) from err
 
         resp_bytes = await resp.read()
 
@@ -144,6 +147,8 @@ class QnapQswApi:
             )
         except ClientError as err:
             raise InvalidHost(err) from err
+        except asyncio.TimeoutError as err:
+            raise APITimeout(err) from err
 
         resp_json = None
         try:

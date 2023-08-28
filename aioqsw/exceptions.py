@@ -10,6 +10,10 @@ class APIError(QswError):
     """Exception raised when API fails."""
 
 
+class APITimeout(QswError):
+    """Exception raised when API timeouts."""
+
+
 class InternalServerError(APIError):
     """Exception raised when API returns internal server error."""
 
