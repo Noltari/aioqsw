@@ -1,6 +1,6 @@
 [project]
 name = "aioqsw"
-version = "0.3.3"
+version = "0.3.4"
 description = "Library to control QNAP QSW devices"
 readme = "README.md"
 requires-python = ">=3.11"
