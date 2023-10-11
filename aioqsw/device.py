@@ -1188,7 +1188,11 @@ class SystemTime:
             raise APIError
 
         if API_UPTIME in res:
-            self.uptime = int(res[API_UPTIME])
+            uptime = int(res[API_UPTIME])
+            if uptime < 0:
+                self.uptime = None
+            else:
+                self.uptime = uptime
 
     def data(self) -> dict[str, Any]:
         """Return System Board data."""
