@@ -1,4 +1,5 @@
 """QNAP QSW basic example."""
+
 import asyncio
 import json
 

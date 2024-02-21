@@ -1,4 +1,5 @@
 """QNAP QSW duplicated login example."""
+
 import asyncio
 import json
 

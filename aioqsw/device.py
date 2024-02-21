@@ -1,4 +1,5 @@
 """QNAP QSW Device."""
+
 from __future__ import annotations
 
 from datetime import datetime

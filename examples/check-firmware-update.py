@@ -1,4 +1,5 @@
 """QNAP QSW check firmware update example."""
+
 import asyncio
 import json
 

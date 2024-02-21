@@ -1,4 +1,5 @@
 """QNAP QSW library exceptions."""
+
 from __future__ import annotations
 
 

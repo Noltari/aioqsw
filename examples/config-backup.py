@@ -1,4 +1,5 @@
 """QNAP QSW config backup example."""
+
 import asyncio
 import json
 import os

@@ -1,4 +1,5 @@
 """QNAP QSW reboot example."""
+
 import asyncio
 import json
 
