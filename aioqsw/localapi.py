@@ -355,7 +355,10 @@ class QnapQswApi:
     async def update_firmware_condition(self) -> None:
         """Update firmware/condition."""
         firmware_condition = await self.get_firmware_condition()
-        self.firmware_condition = FirmwareCondition(firmware_condition)
+        if self.firmware_condition is None:
+            self.firmware_condition = FirmwareCondition(firmware_condition)
+        else:
+            self.firmware_condition.update_data(firmware_condition)
 
     async def update_firmware_info(self) -> None:
         """Update firmware/info."""
@@ -372,17 +375,23 @@ class QnapQswApi:
     async def update_ports_statistics(self, lacp_start: int | None) -> None:
         """Update ports/statistics."""
         ports_statistics_data = await self.get_ports_statistics()
-        _datetime = datetime.now(tz=timezone.utc).replace(tzinfo=None)
-        ports_statistics = PortsStatistics(ports_statistics_data, lacp_start, _datetime)
-        ports_statistics.calc(self.ports_statistics)
-        self.ports_statistics = ports_statistics
+        cur_datetime = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        if self.ports_statistics is None:
+            self.ports_statistics = PortsStatistics(
+                ports_statistics_data, lacp_start, cur_datetime
+            )
+        else:
+            self.ports_statistics.update_data(
+                ports_statistics_data, lacp_start, cur_datetime
+            )
 
     async def update_ports_status(self, lacp_start: int | None) -> None:
         """Update ports/status."""
         ports_status_data = await self.get_ports_status()
-        ports_status = PortsStatus(ports_status_data, lacp_start)
-        ports_status.calc()
-        self.ports_status = ports_status
+        if self.ports_status is None:
+            self.ports_status = PortsStatus(ports_status_data, lacp_start)
+        else:
+            self.ports_status.update_data(ports_status_data, lacp_start)
 
     async def update_system_board(self) -> None:
         """Update system/board."""
@@ -394,7 +403,10 @@ class QnapQswApi:
         """Update system/sensor."""
         try:
             system_sensor = await self.get_system_sensor()
-            self.system_sensor = SystemSensor(system_sensor)
+            if self.system_sensor is None:
+                self.system_sensor = SystemSensor(system_sensor)
+            else:
+                self.system_sensor.update_data(system_sensor)
         except InternalServerError as err:
             if self._first_update:
                 raise err
