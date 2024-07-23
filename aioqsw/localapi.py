@@ -172,6 +172,16 @@ class QnapQswApi:
 
         return cast(dict[str, Any], resp_json)
 
+    def lacp_start(self) -> int | None:
+        """Return LACP start."""
+        if self.lacp_info is not None:
+            return self.lacp_info.get_start_id()
+        if self.system_board is not None:
+            port_num = self.system_board.get_port_num()
+            if port_num is not None:
+                return port_num + 1
+        return None
+
     async def get_about(self) -> dict[str, Any]:
         """API GET about."""
         return await self.http_request("GET", f"{API_PATH}/about")
@@ -337,65 +347,81 @@ class QnapQswApi:
         res = await self.get_system_board()
         return SystemBoard(res)
 
+    async def update_firmware_condition(self) -> None:
+        """Update firmware/condition."""
+        firmware_condition = await self.get_firmware_condition()
+        self.firmware_condition = FirmwareCondition(firmware_condition)
+
+    async def update_firmware_info(self) -> None:
+        """Update firmware/info."""
+        if self.firmware_info is None:
+            firmware_info = await self.get_firmware_info()
+            self.firmware_info = FirmwareInfo(firmware_info)
+
+    async def update_lacp_info(self) -> None:
+        """Update lacp/info."""
+        if self.lacp_info is None:
+            lacp_info = await self.get_lacp_info()
+            self.lacp_info = LACPInfo(lacp_info)
+
+    async def update_ports_statistics(self, lacp_start: int | None) -> None:
+        """Update ports/statistics."""
+        ports_statistics_data = await self.get_ports_statistics()
+        _datetime = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        ports_statistics = PortsStatistics(ports_statistics_data, lacp_start, _datetime)
+        ports_statistics.calc(self.ports_statistics)
+        self.ports_statistics = ports_statistics
+
+    async def update_ports_status(self, lacp_start: int | None) -> None:
+        """Update ports/status."""
+        ports_status_data = await self.get_ports_status()
+        ports_status = PortsStatus(ports_status_data, lacp_start)
+        ports_status.calc()
+        self.ports_status = ports_status
+
+    async def update_system_board(self) -> None:
+        """Update system/board."""
+        if self.system_board is None:
+            system_board = await self.get_system_board()
+            self.system_board = SystemBoard(system_board)
+
+    async def update_system_sensor(self) -> None:
+        """Update system/sensor."""
+        try:
+            system_sensor = await self.get_system_sensor()
+            self.system_sensor = SystemSensor(system_sensor)
+        except InternalServerError as err:
+            if self._first_update:
+                raise err
+            _LOGGER.warning(err)
+
+    async def update_system_time(self) -> None:
+        """Update system/time."""
+        system_time = await self.get_system_time()
+        self.system_time = SystemTime(system_time)
+
     async def update(self) -> None:
         """Update QNAP QSW."""
         await self.login()
 
         # Call system/sensor first since it takes a lot of time (~5s)
-        system_sensor = asyncio.create_task(self.get_system_sensor())
+        system_sensor_task = asyncio.create_task(self.update_system_sensor())
 
         try:
-            firmware_condition = await self.get_firmware_condition()
-            self.firmware_condition = FirmwareCondition(firmware_condition)
+            await self.update_firmware_condition()
+            await self.update_firmware_info()
+            await self.update_lacp_info()
+            await self.update_system_board()
+            await self.update_system_time()
 
-            # Update firmware/info once
-            if self.firmware_info is None:
-                firmware_info = await self.get_firmware_info()
-                self.firmware_info = FirmwareInfo(firmware_info)
-
-            # Update lacp/info once
-            if self.lacp_info is None:
-                lacp_info = await self.get_lacp_info()
-                self.lacp_info = LACPInfo(lacp_info)
-
-            # Update system/board once
-            if self.system_board is None:
-                system_board = await self.get_system_board()
-                self.system_board = SystemBoard(system_board)
-
-            # Get LACP ports start from lacp/info
-            if self.lacp_info is not None:
-                lacp_start = self.lacp_info.get_start_id()
-            elif self.system_board is not None:
-                lacp_start = self.system_board.get_port_num() + 1
-            else:
-                lacp_start = None
-
-            ports_statistics_data = await self.get_ports_statistics()
-            _datetime = datetime.now(tz=timezone.utc).replace(tzinfo=None)
-            ports_statistics = PortsStatistics(
-                ports_statistics_data, lacp_start, _datetime
-            )
-            ports_statistics.calc(self.ports_statistics)
-            self.ports_statistics = ports_statistics
-
-            ports_status_data = await self.get_ports_status()
-            ports_status = PortsStatus(ports_status_data, lacp_start)
-            ports_status.calc()
-            self.ports_status = ports_status
-
-            system_time = await self.get_system_time()
-            self.system_time = SystemTime(system_time)
+            lacp_start = self.lacp_start()
+            await self.update_ports_statistics(lacp_start)
+            await self.update_ports_status(lacp_start)
         except QswError as err:
-            system_sensor.cancel()
+            system_sensor_task.cancel()
             raise err
 
-        try:
-            self.system_sensor = SystemSensor(await system_sensor)
-        except InternalServerError as err:
-            if self._first_update:
-                raise err
-            _LOGGER.warning(err)
+        await system_sensor_task
 
         self._first_update = False
 
