@@ -100,7 +100,7 @@ from aioqsw.exceptions import APIError
 class FirmwareCheck:
     """Firmware Check."""
 
-    def __init__(self, firmware_check: dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """Firmware Check init."""
         self.build_number: str | None = None
         self.date: str | None = None
@@ -110,7 +110,11 @@ class FirmwareCheck:
         self.number: str | None = None
         self.version: str | None = None
 
-        res = firmware_check.get(API_RESULT)
+        self.update_data(data)
+
+    def update_data(self, data: dict[str, Any]) -> None:
+        """Update Firmware Check data."""
+        res = data.get(API_RESULT)
         if not res:
             raise APIError
 
@@ -220,12 +224,16 @@ class FirmwareCheck:
 class FirmwareCondition:
     """Firmware Condition."""
 
-    def __init__(self, firmware_condition: dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """System Time init."""
         self.anomaly: bool | None = None
         self.message: str | None = None
 
-        res = firmware_condition.get(API_RESULT)
+        self.update_data(data)
+
+    def update_data(self, data: dict[str, Any]) -> None:
+        """Update Firmware Condition data."""
+        res = data.get(API_RESULT)
         if not res:
             raise APIError
 
@@ -263,7 +271,7 @@ class FirmwareCondition:
 class FirmwareInfo:
     """Firmware Info."""
 
-    def __init__(self, firmware_info: dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """Firmware Info init."""
         self.build_number: str | None = None
         self.ci_branch: str | None = None
@@ -276,7 +284,11 @@ class FirmwareInfo:
         self.pub_date: str | None = None
         self.version: str | None = None
 
-        res = firmware_info.get(API_RESULT)
+        self.update_data(data)
+
+    def update_data(self, data: dict[str, Any]) -> None:
+        """Update Firmware Info data."""
+        res = data.get(API_RESULT)
         if not res:
             raise APIError
 
@@ -416,13 +428,17 @@ class FirmwareInfo:
 class LACPInfo:
     """LACP Info."""
 
-    def __init__(self, lacp_info: dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """LACP Info init."""
         self.max_channels: int | None = None
         self.max_channel_ports: int | None = None
         self.start_index: int | None = None
 
-        res = lacp_info.get(API_RESULT)
+        self.update_data(data)
+
+    def update_data(self, data: dict[str, Any]) -> None:
+        """Update LACP Info data."""
+        res = data.get(API_RESULT)
         if not res:
             raise APIError
 
@@ -480,7 +496,7 @@ class LACPInfo:
 class PortStatistics:
     """Single Port Statistics."""
 
-    def __init__(self, port_stats: dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """Single Port Statistics init."""
         self.fcs_errors: int | None = None
         self.id: int | None = None
@@ -490,11 +506,15 @@ class PortStatistics:
         self.tx_octets: int | None = None
         self.tx_speed: int = 0
 
-        if API_KEY in port_stats:
-            self.id = int(port_stats[API_KEY])
+        self.update_data(data)
 
-        if API_VAL in port_stats:
-            val = port_stats[API_VAL]
+    def update_data(self, data: dict[str, Any]) -> None:
+        """Update Port Statistics data."""
+        if API_KEY in data:
+            self.id = int(data[API_KEY])
+
+        if API_VAL in data:
+            val = data[API_VAL]
 
             if API_FCS_ERRORS in val:
                 self.fcs_errors = int(val[API_FCS_ERRORS])
@@ -598,12 +618,12 @@ class PortsStatistics:
 
     def __init__(
         self,
-        ports_stats: dict[str, Any],
+        data: dict[str, Any],
         lacp_start: int | None,
         _datetime: datetime,
     ):
         """Ports Statistics init."""
-        self._datetime = _datetime
+        self._datetime: datetime
         self.fcs_errors: int | None = None
         self.lacp_ports: dict[int, PortStatistics] = {}
         self.link: int | None = None
@@ -614,7 +634,15 @@ class PortsStatistics:
         self.tx_octets: int | None = None
         self.tx_speed: int = 0
 
-        res = ports_stats.get(API_RESULT)
+        self.update_data(data, lacp_start, _datetime)
+
+    def update_data(
+        self, data: dict[str, Any], lacp_start: int | None, _datetime: datetime
+    ) -> None:
+        """Update Port Statistics data."""
+        self._datetime = _datetime
+
+        res = data.get(API_RESULT)
         if not res:
             raise APIError
 
@@ -847,18 +875,22 @@ class PortsStatistics:
 class PortStatus:
     """Single Port Status."""
 
-    def __init__(self, port_status: dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """Single Port Status init."""
         self.full_duplex: bool | None = None
         self.id: int | None = None
         self.link: bool | None = None
         self.speed: int | None = None
 
-        if API_KEY in port_status:
-            self.id = int(port_status[API_KEY])
+        self.update_data(data)
 
-        if API_VAL in port_status:
-            val = port_status[API_VAL]
+    def update_data(self, data: dict[str, Any]) -> None:
+        """Update Port Status data."""
+        if API_KEY in data:
+            self.id = int(data[API_KEY])
+
+        if API_VAL in data:
+            val = data[API_VAL]
 
             if API_FULL_DUPLEX in val:
                 self.full_duplex = bool(val[API_FULL_DUPLEX])
@@ -915,13 +947,17 @@ class PortStatus:
 class PortsStatus:
     """Ports Status."""
 
-    def __init__(self, ports_status: dict[str, Any], lacp_start: int | None):
+    def __init__(self, data: dict[str, Any], lacp_start: int | None):
         """Ports Status init."""
         self.link: int | None = None
         self.ports: dict[int, PortStatus] = {}
         self.lacp_ports: dict[int, PortStatus] = {}
 
-        res = ports_status.get(API_RESULT)
+        self.update_data(data, lacp_start)
+
+    def update_data(self, data: dict[str, Any], lacp_start: int | None) -> None:
+        """Update Ports Status data."""
+        res = data.get(API_RESULT)
         if not res:
             raise APIError
 
@@ -1014,7 +1050,7 @@ class PortsStatus:
 class SystemBoard:
     """System Board."""
 
-    def __init__(self, system_board: dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """System Board init."""
         self.chip_id: str | None = None
         self.mac: str | None = None
@@ -1024,7 +1060,11 @@ class SystemBoard:
         self.serial: str | None = None
         self.trunk_num: int | None = None
 
-        res = system_board.get(API_RESULT)
+        self.update_data(data)
+
+    def update_data(self, data: dict[str, Any]) -> None:
+        """Update System Board data."""
+        res = data.get(API_RESULT)
         if not res:
             raise APIError
 
@@ -1111,14 +1151,18 @@ class SystemBoard:
 class SystemSensor:
     """System Sensor."""
 
-    def __init__(self, system_sensor: dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """System Sensor init."""
         self.fan1_speed: int | None = None
         self.fan2_speed: int | None = None
         self.temp: int | None = None
         self.temp_max: int | None = None
 
-        res = system_sensor.get(API_RESULT)
+        self.update_data(data)
+
+    def update_data(self, data: dict[str, Any]) -> None:
+        """Update System Sensor data."""
+        res = data.get(API_RESULT)
         if not res:
             raise APIError
 
@@ -1180,11 +1224,15 @@ class SystemSensor:
 class SystemTime:
     """System Time."""
 
-    def __init__(self, system_time: dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """System Time init."""
         self.uptime: int | None = None
 
-        res = system_time.get(API_RESULT)
+        self.update_data(data)
+
+    def update_data(self, data: dict[str, Any]) -> None:
+        """Update System Time data."""
+        res = data.get(API_RESULT)
         if not res:
             raise APIError
 
