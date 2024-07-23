@@ -64,6 +64,9 @@ API_VERSION: Final[str] = "version"
 
 API_ERROR_PARSING_FAILED: Final[int] = 6
 
+HTTP_CALL_TIMEOUT: Final[int] = 20
+HTTP_MAX_REQUESTS: Final[int] = 6
+
 QSD_ANOMALY: Final[str] = "anomaly"
 QSD_BUILD_NUMBER: Final[str] = "build-number"
 QSD_CHIP_ID: Final[str] = "chip-id"
@@ -118,5 +121,3 @@ QSD_TEMP_MAX: Final[str] = "max-temperature"
 QSD_UPTIME: Final[str] = "uptime"
 QSD_TRUNK_NUM: Final[str] = "trunk-num"
 QSD_VERSION: Final[str] = "version"
-
-HTTP_CALL_TIMEOUT: Final[int] = 20

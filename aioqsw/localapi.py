@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from asyncio import Semaphore
 import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -43,6 +44,7 @@ from .const import (
     API_RESULT,
     API_USERNAME,
     HTTP_CALL_TIMEOUT,
+    HTTP_MAX_REQUESTS,
     QSD_FIRMWARE_CHECK,
     QSD_FIRMWARE_CONDITION,
     QSD_FIRMWARE_INFO,
@@ -83,6 +85,7 @@ class QnapQswApi:
         options: ConnectionOptions,
     ):
         """Device init."""
+        self._api_semaphore: Semaphore = Semaphore(HTTP_MAX_REQUESTS)
         self._first_update: bool = True
         self.aiohttp_session = aiohttp_session
         self.api_key: str | None = None
@@ -108,21 +111,22 @@ class QnapQswApi:
         """Device HTTP request."""
         _LOGGER.debug("aiohttp request: /%s (params=%s)", path, data)
 
-        try:
-            resp: ClientResponse = await self.aiohttp_session.request(
-                method,
-                f"{self.options.url}/{path}",
-                cookies=self.cookies,
-                data=json.dumps(data),
-                headers=self.headers,
-                timeout=HTTP_CALL_TIMEOUT,
-            )
-        except ClientError as err:
-            raise InvalidHost(err) from err
-        except asyncio.TimeoutError as err:
-            raise APITimeout(err) from err
+        async with self._api_semaphore:
+            try:
+                resp: ClientResponse = await self.aiohttp_session.request(
+                    method,
+                    f"{self.options.url}/{path}",
+                    cookies=self.cookies,
+                    data=json.dumps(data),
+                    headers=self.headers,
+                    timeout=HTTP_CALL_TIMEOUT,
+                )
+            except ClientError as err:
+                raise InvalidHost(err) from err
+            except asyncio.TimeoutError as err:
+                raise APITimeout(err) from err
 
-        resp_bytes = await resp.read()
+            resp_bytes = await resp.read()
 
         if resp.status == 401:
             raise LoginError(f"Login error @ {method} /{path}")
@@ -137,26 +141,27 @@ class QnapQswApi:
         """Device HTTP request."""
         _LOGGER.debug("aiohttp request: /%s (params=%s)", path, data)
 
-        try:
-            resp: ClientResponse = await self.aiohttp_session.request(
-                method,
-                f"{self.options.url}/{path}",
-                cookies=self.cookies,
-                data=json.dumps(data),
-                headers=self.headers,
-                timeout=HTTP_CALL_TIMEOUT,
-            )
-        except ClientError as err:
-            raise InvalidHost(err) from err
-        except asyncio.TimeoutError as err:
-            raise APITimeout(err) from err
+        async with self._api_semaphore:
+            try:
+                resp: ClientResponse = await self.aiohttp_session.request(
+                    method,
+                    f"{self.options.url}/{path}",
+                    cookies=self.cookies,
+                    data=json.dumps(data),
+                    headers=self.headers,
+                    timeout=HTTP_CALL_TIMEOUT,
+                )
+            except ClientError as err:
+                raise InvalidHost(err) from err
+            except asyncio.TimeoutError as err:
+                raise APITimeout(err) from err
 
-        resp_json = None
-        try:
-            resp_json = await resp.json()
-            _LOGGER.debug("aiohttp response: %s", resp_json)
-        except ContentTypeError as err:
-            raise InvalidResponse(err) from err
+            resp_json = None
+            try:
+                resp_json = await resp.json()
+                _LOGGER.debug("aiohttp response: %s", resp_json)
+            except ContentTypeError as err:
+                raise InvalidResponse(err) from err
 
         if resp.status == 401:
             raise LoginError("Login error @ {method} /{path}")
@@ -408,15 +413,21 @@ class QnapQswApi:
         system_sensor_task = asyncio.create_task(self.update_system_sensor())
 
         try:
-            await self.update_firmware_condition()
-            await self.update_firmware_info()
-            await self.update_lacp_info()
-            await self.update_system_board()
-            await self.update_system_time()
+            tasks = [
+                self.update_lacp_info(),
+                self.update_system_board(),
+            ]
+            await asyncio.gather(*tasks)
 
             lacp_start = self.lacp_start()
-            await self.update_ports_statistics(lacp_start)
-            await self.update_ports_status(lacp_start)
+            tasks = [
+                self.update_firmware_condition(),
+                self.update_firmware_info(),
+                self.update_ports_statistics(lacp_start),
+                self.update_ports_status(lacp_start),
+                self.update_system_time(),
+            ]
+            await asyncio.gather(*tasks)
         except QswError as err:
             system_sensor_task.cancel()
             raise err
@@ -433,6 +444,7 @@ class QnapQswApi:
         if API_AUTHORIZATION in self.headers:
             del self.headers[API_AUTHORIZATION]
         self.firmware_info = None
+        self.lacp_info = None
         self.system_board = None
 
     def _login_required(self) -> bool:
