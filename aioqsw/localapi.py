@@ -450,8 +450,12 @@ class QnapQswApi:
     async def update_system_time(self) -> None:
         """Update system/time."""
         system_time = await self.get_system_time()
+        cur_datetime = datetime.now(tz=timezone.utc).replace(microsecond=0)
         await self.set_api_raw_data(RAW_SYSTEM_TIME, system_time)
-        self.system_time = SystemTime(system_time)
+        if self.system_time is None:
+            self.system_time = SystemTime(system_time, cur_datetime)
+        else:
+            self.system_time.update_data(system_time, cur_datetime)
 
     async def update(self) -> None:
         """Update QNAP QSW."""

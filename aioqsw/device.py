@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 from typing import Any
 
@@ -91,7 +91,8 @@ from aioqsw.const import (
     QSD_TRUNK_NUM,
     QSD_TX_OCTETS,
     QSD_TX_SPEED,
-    QSD_UPTIME,
+    QSD_UPTIME_SECONDS,
+    QSD_UPTIME_TIMESTAMP,
     QSD_VERSION,
 )
 from aioqsw.exceptions import APIError
@@ -1338,36 +1339,51 @@ class SystemSensor:
 class SystemTime:
     """System Time."""
 
-    def __init__(self, data: dict[str, Any]):
+    def __init__(self, data: dict[str, Any], cur_datetime: datetime):
         """System Time init."""
-        self.uptime: int | None = None
+        self.uptime_seconds: int | None = None
+        self.uptime_timestamp: datetime | None = None
 
-        self.update_data(data)
+        self.update_data(data, cur_datetime)
 
-    def update_data(self, data: dict[str, Any]) -> None:
+    def update_data(self, data: dict[str, Any], cur_datetime: datetime) -> None:
         """Update System Time data."""
         res: dict[str, Any] | None = data.get(API_RESULT)
         if res is None:
             raise APIError
 
-        uptime = res.get(API_UPTIME)
-        if uptime is not None:
-            uptime = int(uptime)
-            if uptime < 0:
-                self.uptime = None
+        uptime_seconds = res.get(API_UPTIME)
+        if uptime_seconds is not None:
+            uptime_seconds = int(uptime_seconds)
+            if uptime_seconds < 0:
+                self.uptime_seconds = None
             else:
-                self.uptime = uptime
+                self.uptime_seconds = uptime_seconds
+
+                if self.uptime_timestamp is None:
+                    uptime_delta = timedelta(seconds=uptime_seconds)
+                    self.uptime_timestamp = cur_datetime - uptime_delta
 
     def data(self) -> dict[str, Any]:
         """Return System Board data."""
         data: dict[str, Any] = {}
 
-        uptime = self.get_uptime()
-        if uptime is not None:
-            data[QSD_UPTIME] = uptime
+        uptime_seconds = self.get_uptime_seconds()
+        if uptime_seconds is not None:
+            data[QSD_UPTIME_SECONDS] = uptime_seconds
+
+        uptime_timestamp = self.get_uptime_timestamp()
+        if uptime_timestamp is not None:
+            data[QSD_UPTIME_TIMESTAMP] = uptime_timestamp
 
         return data
 
-    def get_uptime(self) -> int | None:
-        """Get Uptime."""
-        return self.uptime
+    def get_uptime_seconds(self) -> int | None:
+        """Get Uptime seconds."""
+        return self.uptime_seconds
+
+    def get_uptime_timestamp(self) -> str | None:
+        """Get Uptime timestamp."""
+        if self.uptime_timestamp is not None:
+            return self.uptime_timestamp.isoformat()
+        return None
