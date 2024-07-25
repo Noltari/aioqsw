@@ -114,31 +114,38 @@ class FirmwareCheck:
 
     def update_data(self, data: dict[str, Any]) -> None:
         """Update Firmware Check data."""
-        res = data.get(API_RESULT)
-        if not res:
+        res: dict[str, Any] | None = data.get(API_RESULT)
+        if res is None:
             raise APIError
 
-        if API_BUILD_NUMBER in res:
-            self.build_number = str(res[API_BUILD_NUMBER])
+        build_number = res.get(API_BUILD_NUMBER)
+        if build_number is not None:
+            self.build_number = str(build_number)
 
-        if API_DATE in res:
-            self.date = str(res[API_DATE])
+        date = res.get(API_DATE)
+        if date is not None:
+            self.date = str(date)
 
-        if API_DESCRIPTION in res:
-            self.description = str(res[API_DESCRIPTION])
+        description = res.get(API_DESCRIPTION)
+        if description is not None:
+            self.description = str(description)
 
-        if API_DOWNLOAD_URL in res:
-            for url in res[API_DOWNLOAD_URL]:
+        download_urls: list[Any] | None = res.get(API_DOWNLOAD_URL)
+        if download_urls is not None:
+            for url in download_urls:
                 self.download_urls.append(str(url))
 
-        if API_NEWER in res:
-            self.newer = bool(res[API_NEWER])
+        newer = res.get(API_NEWER)
+        if newer is not None:
+            self.newer = bool(newer)
 
-        if API_NUMBER in res:
-            self.number = str(res[API_NUMBER])
+        number = res.get(API_NUMBER)
+        if number is not None:
+            self.number = str(number)
 
-        if API_VERSION in res:
-            self.version = str(res[API_VERSION])
+        version = res.get(API_VERSION)
+        if version is not None:
+            self.version = str(version)
 
     def data(self) -> dict[str, Any]:
         """Return Firmware Info data."""
@@ -233,15 +240,17 @@ class FirmwareCondition:
 
     def update_data(self, data: dict[str, Any]) -> None:
         """Update Firmware Condition data."""
-        res = data.get(API_RESULT)
-        if not res:
+        res: dict[str, Any] | None = data.get(API_RESULT)
+        if res is None:
             raise APIError
 
-        if API_ANOMALY in res:
-            self.anomaly = bool(res[API_ANOMALY])
+        anomaly = res.get(API_ANOMALY)
+        if anomaly is not None:
+            self.anomaly = bool(anomaly)
 
-        if API_MESSAGE in res:
-            self.message = str(res[API_MESSAGE])
+        message = res.get(API_MESSAGE)
+        if message is not None:
+            self.message = str(message)
 
     def data(self) -> dict[str, Any]:
         """Return System Board data."""
@@ -288,39 +297,49 @@ class FirmwareInfo:
 
     def update_data(self, data: dict[str, Any]) -> None:
         """Update Firmware Info data."""
-        res = data.get(API_RESULT)
-        if not res:
+        res: dict[str, Any] | None = data.get(API_RESULT)
+        if res is None:
             raise APIError
 
-        if API_BUILD_NUMBER in res:
-            self.build_number = str(res[API_BUILD_NUMBER])
+        build_number = res.get(API_BUILD_NUMBER)
+        if build_number is not None:
+            self.build_number = str(build_number)
 
-        if API_CI_BRANCH in res:
-            self.ci_branch = str(res[API_CI_BRANCH])
+        ci_branch = res.get(API_CI_BRANCH)
+        if ci_branch is not None:
+            self.ci_branch = str(ci_branch)
 
-        if API_CI_COMMIT in res:
-            self.ci_commit = str(res[API_CI_COMMIT])
+        ci_commit = res.get(API_CI_COMMIT)
+        if ci_commit is not None:
+            self.ci_commit = str(ci_commit)
 
-        if API_CI_PIPELINE in res:
-            self.ci_pipeline = str(res[API_CI_PIPELINE])
+        ci_pipeline = res.get(API_CI_PIPELINE)
+        if ci_pipeline is not None:
+            self.ci_pipeline = str(ci_pipeline)
 
-        if API_COMMIT_CPSS in res:
-            self.commit_cpss = str(res[API_COMMIT_CPSS])
+        commit_cpss = res.get(API_COMMIT_CPSS)
+        if commit_cpss is not None:
+            self.commit_cpss = str(commit_cpss)
 
-        if API_COMMIT_ISS in res:
-            self.commit_iss = str(res[API_COMMIT_ISS])
+        commit_iss = res.get(API_COMMIT_ISS)
+        if commit_iss is not None:
+            self.commit_iss = str(commit_iss)
 
-        if API_DATE in res:
-            self.date = str(res[API_DATE])
+        date = res.get(API_DATE)
+        if date is not None:
+            self.date = str(date)
 
-        if API_NUMBER in res:
-            self.number = str(res[API_NUMBER])
+        number = res.get(API_NUMBER)
+        if number is not None:
+            self.number = str(number)
 
-        if API_PUB_DATE in res:
-            self.pub_date = str(res[API_PUB_DATE])
+        pub_date = res.get(API_PUB_DATE)
+        if pub_date is not None:
+            self.pub_date = str(pub_date)
 
-        if API_VERSION in res:
-            self.version = str(res[API_VERSION])
+        version = res.get(API_VERSION)
+        if version is not None:
+            self.version = str(version)
 
     def data(self) -> dict[str, Any]:
         """Return Firmware Info data."""
@@ -438,18 +457,21 @@ class LACPInfo:
 
     def update_data(self, data: dict[str, Any]) -> None:
         """Update LACP Info data."""
-        res = data.get(API_RESULT)
-        if not res:
+        res: dict[str, Any] | None = data.get(API_RESULT)
+        if res is None:
             raise APIError
 
-        if API_MAX_PORT_CHANNELS in res:
-            self.max_channels = int(res[API_MAX_PORT_CHANNELS])
+        max_channels = res.get(API_MAX_PORT_CHANNELS)
+        if max_channels is not None:
+            self.max_channels = int(max_channels)
 
-        if API_MAX_PORTS_PER_PORT_CHANNEL in res:
-            self.max_channel_ports = int(res[API_MAX_PORTS_PER_PORT_CHANNEL])
+        max_channel_ports = res.get(API_MAX_PORTS_PER_PORT_CHANNEL)
+        if max_channel_ports is not None:
+            self.max_channel_ports = int(max_channel_ports)
 
-        if API_START_INDEX in res:
-            self.start_index = int(res[API_START_INDEX])
+        start_index = res.get(API_START_INDEX)
+        if start_index is not None:
+            self.start_index = int(start_index)
 
     def data(self) -> dict[str, Any]:
         """Return LACP Info data."""
@@ -499,7 +521,7 @@ class PortStatistics:
     def __init__(self, data: dict[str, Any]):
         """Single Port Statistics init."""
         key = data.get(API_KEY)
-        if not key:
+        if key is None:
             raise APIError
 
         self.cur_rx_octets: int | None = None
@@ -521,19 +543,23 @@ class PortStatistics:
         self.prev_rx_octets = self.cur_rx_octets
         self.prev_tx_octets = self.cur_tx_octets
 
-        val = data.get(API_VAL)
+        val: dict[str, Any] | None = data.get(API_VAL)
         if val is not None:
-            if API_FCS_ERRORS in val:
-                self.fcs_errors = int(val[API_FCS_ERRORS])
+            fcs_errors = val.get(API_FCS_ERRORS)
+            if fcs_errors is not None:
+                self.fcs_errors = int(fcs_errors)
 
-            if API_RX_ERRORS in val:
-                self.rx_errors = int(val[API_RX_ERRORS])
+            rx_errors = val.get(API_RX_ERRORS)
+            if rx_errors is not None:
+                self.rx_errors = int(rx_errors)
 
-            if API_RX_OCTETS in val:
-                self.cur_rx_octets = int(val[API_RX_OCTETS])
+            cur_rx_octets = val.get(API_RX_OCTETS)
+            if cur_rx_octets is not None:
+                self.cur_rx_octets = int(cur_rx_octets)
 
-            if API_TX_OCTETS in val:
-                self.cur_tx_octets = int(val[API_TX_OCTETS])
+            cur_tx_octets = val.get(API_TX_OCTETS)
+            if cur_tx_octets is not None:
+                self.cur_tx_octets = int(cur_tx_octets)
 
     @staticmethod
     def calc_speed(
@@ -697,8 +723,8 @@ class PortsStatistics:
         self, data: dict[str, Any], lacp_start: int | None, cur_datetime: datetime
     ) -> None:
         """Update Port Statistics data."""
-        res = data.get(API_RESULT)
-        if not res:
+        res: list[dict[str, Any]] | None = data.get(API_RESULT)
+        if res is None:
             raise APIError
 
         self.prev_datetime = self.cur_datetime
@@ -897,7 +923,7 @@ class PortStatus:
     def __init__(self, data: dict[str, Any]):
         """Single Port Status init."""
         key = data.get(API_KEY)
-        if not key:
+        if key is None:
             raise APIError
 
         self.full_duplex: bool | None = None
@@ -910,16 +936,19 @@ class PortStatus:
 
     def update_data(self, data: dict[str, Any]) -> None:
         """Update Port Status data."""
-        val = data.get(API_VAL)
+        val: dict[str, Any] | None = data.get(API_VAL)
         if val is not None:
-            if API_FULL_DUPLEX in val:
-                self.full_duplex = bool(val[API_FULL_DUPLEX])
+            full_duplex = val.get(API_FULL_DUPLEX)
+            if full_duplex is not None:
+                self.full_duplex = bool(full_duplex)
 
-            if API_LINK in val:
-                self.link = bool(val[API_LINK])
+            link = val.get(API_LINK)
+            if link is not None:
+                self.link = bool(link)
 
-            if API_SPEED in val:
-                self.speed = int(val[API_SPEED])
+            speed = val.get(API_SPEED)
+            if speed is not None:
+                self.speed = int(speed)
 
     def data(self) -> dict[str, Any]:
         """Return Single Port Status data."""
@@ -1018,8 +1047,8 @@ class PortsStatus:
 
     def update_data(self, data: dict[str, Any], lacp_start: int | None) -> None:
         """Update Ports Status data."""
-        res = data.get(API_RESULT)
-        if not res:
+        res: list[dict[str, Any]] | None = data.get(API_RESULT)
+        if res is None:
             raise APIError
 
         for port_data in res:
@@ -1132,24 +1161,37 @@ class SystemBoard:
 
     def update_data(self, data: dict[str, Any]) -> None:
         """Update System Board data."""
-        res = data.get(API_RESULT)
-        if not res:
+        res: dict[str, Any] | None = data.get(API_RESULT)
+        if res is None:
             raise APIError
 
-        if API_CHIP_ID in res:
-            self.chip_id = str(res[API_CHIP_ID])
-        if API_MAC_ADDR in res:
-            self.mac = str(res[API_MAC_ADDR])
-        if API_MODEL in res:
-            self.model = str(res[API_MODEL])
-        if API_PORT_NUM in res:
-            self.port_num = int(res[API_PORT_NUM])
-        if API_PRODUCT in res:
-            self.product = str(res[API_PRODUCT])
-        if API_SERIAL in res:
-            self.serial = str(res[API_SERIAL])
-        if API_TRUNK_NUM in res:
-            self.trunk_num = int(res[API_TRUNK_NUM])
+        chip_id = res.get(API_CHIP_ID)
+        if chip_id is not None:
+            self.chip_id = str(chip_id)
+
+        mac = res.get(API_MAC_ADDR)
+        if mac is not None:
+            self.mac = str(mac)
+
+        model = res.get(API_MODEL)
+        if model is not None:
+            self.model = str(model)
+
+        port_num = res.get(API_PORT_NUM)
+        if port_num is not None:
+            self.port_num = int(port_num)
+
+        product = res.get(API_PRODUCT)
+        if product is not None:
+            self.product = str(product)
+
+        serial = res.get(API_SERIAL)
+        if serial is not None:
+            self.serial = str(serial)
+
+        trunk_num = res.get(API_TRUNK_NUM)
+        if trunk_num is not None:
+            self.trunk_num = int(trunk_num)
 
     def data(self) -> dict[str, Any]:
         """Return System Board data."""
@@ -1230,21 +1272,25 @@ class SystemSensor:
 
     def update_data(self, data: dict[str, Any]) -> None:
         """Update System Sensor data."""
-        res = data.get(API_RESULT)
-        if not res:
+        res: dict[str, Any] | None = data.get(API_RESULT)
+        if res is None:
             raise APIError
 
-        if API_FAN1_SPEED in res:
-            self.fan1_speed = int(res[API_FAN1_SPEED])
+        fan1_speed = res.get(API_FAN1_SPEED)
+        if fan1_speed is not None:
+            self.fan1_speed = int(fan1_speed)
 
-        if API_FAN2_SPEED in res:
-            self.fan2_speed = int(res[API_FAN2_SPEED])
+        fan2_speed = res.get(API_FAN2_SPEED)
+        if fan2_speed is not None:
+            self.fan2_speed = int(fan2_speed)
 
-        if API_MAX_SWITCH_TEMP in res:
-            self.temp_max = int(res[API_MAX_SWITCH_TEMP])
+        temp_max = res.get(API_MAX_SWITCH_TEMP)
+        if temp_max is not None:
+            self.temp_max = int(temp_max)
 
-        if API_SWITCH_TEMP in res:
-            self.temp = int(res[API_SWITCH_TEMP])
+        temp = res.get(API_SWITCH_TEMP)
+        if temp is not None:
+            self.temp = int(temp)
 
     def data(self) -> dict[str, Any]:
         """Return System Board data."""
@@ -1300,12 +1346,13 @@ class SystemTime:
 
     def update_data(self, data: dict[str, Any]) -> None:
         """Update System Time data."""
-        res = data.get(API_RESULT)
-        if not res:
+        res: dict[str, Any] | None = data.get(API_RESULT)
+        if res is None:
             raise APIError
 
-        if API_UPTIME in res:
-            uptime = int(res[API_UPTIME])
+        uptime = res.get(API_UPTIME)
+        if uptime is not None:
+            uptime = int(uptime)
             if uptime < 0:
                 self.uptime = None
             else:
