@@ -301,7 +301,10 @@ class QnapQswApi:
 
         fw_check = await self.get_firmware_update_check()
         await self.set_api_raw_data(RAW_FIRMWARE_CHECK, fw_check)
-        self.firmware_check = FirmwareCheck(fw_check)
+        if self.firmware_check is None:
+            self.firmware_check = FirmwareCheck(fw_check)
+        else:
+            self.firmware_check.update_data(fw_check)
 
         return self.firmware_check
 
