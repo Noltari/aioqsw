@@ -426,18 +426,18 @@ class QnapQswApi:
 
         try:
             tasks = [
-                self.update_lacp_info(),
-                self.update_system_board(),
+                asyncio.create_task(self.update_lacp_info()),
+                asyncio.create_task(self.update_system_board()),
             ]
             await asyncio.gather(*tasks)
 
             lacp_start = self.lacp_start()
             tasks = [
-                self.update_firmware_condition(),
-                self.update_firmware_info(),
-                self.update_ports_statistics(lacp_start),
-                self.update_ports_status(lacp_start),
-                self.update_system_time(),
+                asyncio.create_task(self.update_firmware_condition()),
+                asyncio.create_task(self.update_firmware_info()),
+                asyncio.create_task(self.update_ports_statistics(lacp_start)),
+                asyncio.create_task(self.update_ports_status(lacp_start)),
+                asyncio.create_task(self.update_system_time()),
             ]
             await asyncio.gather(*tasks)
         except QswError as err:
