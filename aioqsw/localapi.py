@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from asyncio import Semaphore
+from asyncio import Lock, Semaphore
 import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -53,6 +53,15 @@ from .const import (
     QSD_SYSTEM_BOARD,
     QSD_SYSTEM_SENSOR,
     QSD_SYSTEM_TIME,
+    RAW_FIRMWARE_CHECK,
+    RAW_FIRMWARE_CONDITION,
+    RAW_FIRMWARE_INFO,
+    RAW_LACP_INFO,
+    RAW_PORTS_STATISTICS,
+    RAW_PORTS_STATUS,
+    RAW_SYSTEM_BOARD,
+    RAW_SYSTEM_SENSOR,
+    RAW_SYSTEM_TIME,
 )
 from .exceptions import (
     APIError,
@@ -85,6 +94,18 @@ class QnapQswApi:
         options: ConnectionOptions,
     ):
         """Device init."""
+        self._api_raw_data: dict[str, Any] = {
+            RAW_FIRMWARE_CHECK: {},
+            RAW_FIRMWARE_CONDITION: {},
+            RAW_FIRMWARE_INFO: {},
+            RAW_LACP_INFO: {},
+            RAW_PORTS_STATISTICS: {},
+            RAW_PORTS_STATUS: {},
+            RAW_SYSTEM_BOARD: {},
+            RAW_SYSTEM_SENSOR: {},
+            RAW_SYSTEM_TIME: {},
+        }
+        self._api_raw_data_lock = Lock()
         self._api_semaphore: Semaphore = Semaphore(HTTP_MAX_REQUESTS)
         self._first_update: bool = True
         self.aiohttp_session = aiohttp_session
@@ -268,11 +289,18 @@ class QnapQswApi:
         """API POST users login."""
         return await self.http_request("POST", f"{API_PATH_V1}/users/login", params)
 
+    async def set_api_raw_data(self, key: str, data: dict[str, Any] | None) -> None:
+        """Save API raw data if not empty."""
+        if data is not None:
+            async with self._api_raw_data_lock:
+                self._api_raw_data[key] = data
+
     async def check_firmware(self) -> FirmwareCheck:
         """Check QNAP QSW firmware version."""
         await self.login()
 
         fw_check = await self.get_firmware_update_check()
+        await self.set_api_raw_data(RAW_FIRMWARE_CHECK, fw_check)
         self.firmware_check = FirmwareCheck(fw_check)
 
         return self.firmware_check
@@ -355,6 +383,7 @@ class QnapQswApi:
     async def update_firmware_condition(self) -> None:
         """Update firmware/condition."""
         firmware_condition = await self.get_firmware_condition()
+        await self.set_api_raw_data(RAW_FIRMWARE_CONDITION, firmware_condition)
         if self.firmware_condition is None:
             self.firmware_condition = FirmwareCondition(firmware_condition)
         else:
@@ -364,18 +393,21 @@ class QnapQswApi:
         """Update firmware/info."""
         if self.firmware_info is None:
             firmware_info = await self.get_firmware_info()
+            await self.set_api_raw_data(RAW_FIRMWARE_INFO, firmware_info)
             self.firmware_info = FirmwareInfo(firmware_info)
 
     async def update_lacp_info(self) -> None:
         """Update lacp/info."""
         if self.lacp_info is None:
             lacp_info = await self.get_lacp_info()
+            await self.set_api_raw_data(RAW_LACP_INFO, lacp_info)
             self.lacp_info = LACPInfo(lacp_info)
 
     async def update_ports_statistics(self, lacp_start: int | None) -> None:
         """Update ports/statistics."""
         ports_statistics_data = await self.get_ports_statistics()
         cur_datetime = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        await self.set_api_raw_data(RAW_PORTS_STATISTICS, ports_statistics_data)
         if self.ports_statistics is None:
             self.ports_statistics = PortsStatistics(
                 ports_statistics_data, lacp_start, cur_datetime
@@ -388,6 +420,7 @@ class QnapQswApi:
     async def update_ports_status(self, lacp_start: int | None) -> None:
         """Update ports/status."""
         ports_status_data = await self.get_ports_status()
+        await self.set_api_raw_data(RAW_PORTS_STATUS, ports_status_data)
         if self.ports_status is None:
             self.ports_status = PortsStatus(ports_status_data, lacp_start)
         else:
@@ -397,12 +430,14 @@ class QnapQswApi:
         """Update system/board."""
         if self.system_board is None:
             system_board = await self.get_system_board()
+            await self.set_api_raw_data(RAW_SYSTEM_BOARD, system_board)
             self.system_board = SystemBoard(system_board)
 
     async def update_system_sensor(self) -> None:
         """Update system/sensor."""
         try:
             system_sensor = await self.get_system_sensor()
+            await self.set_api_raw_data(RAW_SYSTEM_SENSOR, system_sensor)
             if self.system_sensor is None:
                 self.system_sensor = SystemSensor(system_sensor)
             else:
@@ -415,6 +450,7 @@ class QnapQswApi:
     async def update_system_time(self) -> None:
         """Update system/time."""
         system_time = await self.get_system_time()
+        await self.set_api_raw_data(RAW_SYSTEM_TIME, system_time)
         self.system_time = SystemTime(system_time)
 
     async def update(self) -> None:
@@ -508,6 +544,10 @@ class QnapQswApi:
                 pass
 
             self._login_clear()
+
+    def raw_data(self) -> dict[str, Any]:
+        """Return raw QNAP QSW API data."""
+        return self._api_raw_data
 
     def data(self) -> dict[str, Any]:
         """Return QNAP QSW device data."""
