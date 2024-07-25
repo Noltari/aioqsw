@@ -501,6 +501,7 @@ class QnapQswApi:
         self.firmware_info = None
         self.lacp_info = None
         self.system_board = None
+        self.system_time = None
 
     def _login_required(self) -> bool:
         """Check if login is required."""
