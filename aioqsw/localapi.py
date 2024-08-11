@@ -11,7 +11,7 @@ import json
 import logging
 from typing import Any, cast
 
-from aiohttp import ClientSession, ContentTypeError
+from aiohttp import ClientSession, ClientTimeout, ContentTypeError
 from aiohttp.client_exceptions import ClientError
 from aiohttp.client_reqrep import ClientResponse
 
@@ -107,6 +107,7 @@ class QnapQswApi:
         }
         self._api_raw_data_lock = Lock()
         self._api_semaphore: Semaphore = Semaphore(HTTP_MAX_REQUESTS)
+        self._api_timeout: ClientTimeout = ClientTimeout(total=HTTP_CALL_TIMEOUT)
         self._first_update: bool = True
         self.aiohttp_session = aiohttp_session
         self.api_key: str | None = None
@@ -140,7 +141,7 @@ class QnapQswApi:
                     cookies=self.cookies,
                     data=json.dumps(data),
                     headers=self.headers,
-                    timeout=HTTP_CALL_TIMEOUT,
+                    timeout=self._api_timeout,
                 )
             except ClientError as err:
                 raise InvalidHost(err) from err
@@ -170,7 +171,7 @@ class QnapQswApi:
                     cookies=self.cookies,
                     data=json.dumps(data),
                     headers=self.headers,
-                    timeout=HTTP_CALL_TIMEOUT,
+                    timeout=self._api_timeout,
                 )
             except ClientError as err:
                 raise InvalidHost(err) from err
