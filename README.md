@@ -11,7 +11,7 @@
 Python library to control QNAP QSW devices.
 
 ## Requirements
-- Python >= 3.11
+- Python >= 3.12
 
 ## Install
 ```bash
