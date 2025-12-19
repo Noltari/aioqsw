@@ -141,6 +141,7 @@ class QnapQswApi:
                     cookies=self.cookies,
                     data=json.dumps(data),
                     headers=self.headers,
+                    ssl=False,
                     timeout=self._api_timeout,
                 )
             except ClientError as err:
@@ -171,6 +172,7 @@ class QnapQswApi:
                     cookies=self.cookies,
                     data=json.dumps(data),
                     headers=self.headers,
+                    ssl=False,
                     timeout=self._api_timeout,
                 )
             except ClientError as err:
