@@ -131,10 +131,13 @@ class FirmwareCheck:
         if description is not None:
             self.description = str(description)
 
-        download_urls: list[Any] | None = res.get(API_DOWNLOAD_URL)
-        if download_urls is not None:
-            for url in download_urls:
-                self.download_urls.append(str(url))
+        download_url_list: list[Any] | None = res.get(API_DOWNLOAD_URL)
+        if download_url_list is not None:
+            download_urls = []
+            for url in download_url_list:
+                download_urls.append(str(url))
+            if len(download_urls) > 0:
+                self.download_urls = download_urls
 
         newer = res.get(API_NEWER)
         if newer is not None:
