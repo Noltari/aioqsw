@@ -347,7 +347,7 @@ class QnapQswApi:
         response = await self.get_firmware_update()
 
         result = response.get(API_RESULT)
-        if result is dict:
+        if isinstance(result, dict):
             if result.keys() >= {API_DOWNLOAD_SIZE, API_FIRMWARE_SIZE}:
                 dl_size = float(result[API_DOWNLOAD_SIZE])
                 fw_size = float(result[API_FIRMWARE_SIZE])
@@ -362,7 +362,7 @@ class QnapQswApi:
         result = response.get(API_RESULT)
         if API_RESULT in response and result == API_NONE:
             return False
-        if result is dict:
+        if isinstance(result, dict):
             if API_PROGRESS in result and result[API_PROGRESS] == API_DONE:
                 return False
 
