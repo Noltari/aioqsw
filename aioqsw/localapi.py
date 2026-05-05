@@ -188,7 +188,7 @@ class QnapQswApi:
                 raise InvalidResponse(err) from err
 
         if resp.status == 401:
-            raise LoginError("Login error @ {method} /{path}")
+            raise LoginError(f"Login error @ {method} /{path}")
         if resp.status != 200:
             if resp.status == 500:
                 raise InternalServerError(
