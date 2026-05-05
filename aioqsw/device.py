@@ -996,7 +996,7 @@ class PortStatus:
 
     def set_lacp_id(self, _id: int) -> None:
         """Set LACP port ID."""
-        self.id = _id
+        self.lacp_id = _id
 
     def set_id(self, _id: int) -> None:
         """Set port ID."""
